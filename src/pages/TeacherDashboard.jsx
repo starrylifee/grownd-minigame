@@ -1,0 +1,441 @@
+import { useEffect, useState } from 'react'
+import { signOut } from 'firebase/auth'
+import { useNavigate } from 'react-router-dom'
+import { auth } from '../lib/firebase'
+import { useAuth } from '../context/AuthContext'
+import {
+  getTeacher, saveTeacher, getClass, saveClass,
+  saveActivity, getActivity, saveOXQuestions, hashPassword
+} from '../lib/firestore'
+import { GAMES } from '../config/games'
+
+const TABS = ['학급 설정', '학생 관리', '게임 관리']
+
+export default function TeacherDashboard() {
+  const { teacher } = useAuth()
+  const navigate = useNavigate()
+  const [tab, setTab] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  // 학급 설정
+  const [apiKey, setApiKey]         = useState('')
+  const [classId, setClassId]       = useState('')
+  const [classCode, setClassCode]   = useState('')
+  const [className, setClassName]   = useState('')
+
+  // 학생 목록
+  const [students, setStudents]     = useState({}) // { "1": { name, passwordHash } }
+  const [newNum, setNewNum]         = useState('')
+  const [newName, setNewName]       = useState('')
+  const [newPw, setNewPw]           = useState('')
+  const [bulkMode, setBulkMode]     = useState(false)
+  const [bulkText, setBulkText]     = useState('')
+  const [bulkError, setBulkError]   = useState('')
+
+  // 게임 설정
+  const [gameSettings, setGameSettings] = useState({}) // { gameId: { enabled, activityPassword, pointsPerCompletion } }
+
+  // OX퀴즈 문제
+  const [oxQuestions, setOxQuestions] = useState([{ question: '', answer: true }])
+
+  useEffect(() => {
+    if (!teacher) return
+    async function load() {
+      const teacherData = await getTeacher(teacher.uid)
+      if (teacherData) {
+        setApiKey(teacherData.growndApiKey || '')
+        setClassId(teacherData.growndClassId || '')
+        setClassCode(teacherData.classCode || '')
+        setClassName(teacherData.className || '')
+      }
+    }
+    load()
+  }, [teacher])
+
+  useEffect(() => {
+    if (!classCode) return
+    async function loadClass() {
+      const classData = await getClass(classCode)
+      if (classData) setStudents(classData.students || {})
+      // 게임 설정 로드
+      const settings = {}
+      for (const game of GAMES) {
+        const act = await getActivity(classCode, game.id)
+        settings[game.id] = act || {
+          enabled: false,
+          activityPassword: '',
+          pointsPerCompletion: 10,
+        }
+      }
+      setGameSettings(settings)
+      // OX퀴즈 문제 로드
+      const ox = await getActivity(classCode, 'ox-quiz')
+      if (ox?.questions?.length) setOxQuestions(ox.questions)
+    }
+    loadClass()
+  }, [classCode])
+
+  function flash(text) {
+    setMsg(text)
+    setTimeout(() => setMsg(''), 2500)
+  }
+
+  async function saveSettings() {
+    setSaving(true)
+    await saveTeacher(teacher.uid, {
+      growndApiKey:  apiKey,
+      growndClassId: classId,
+      classCode,
+      className,
+    })
+    await saveClass(classCode, { teacherUid: teacher.uid, className, students })
+    flash('✅ 저장되었습니다!')
+    setSaving(false)
+  }
+
+  async function addStudent() {
+    if (!newNum || !newName || !newPw) return
+    const hash = await hashPassword(newPw)
+    const updated = { ...students, [newNum]: { name: newName, passwordHash: hash } }
+    setStudents(updated)
+    await saveClass(classCode, { teacherUid: teacher.uid, className, students: updated })
+    setNewNum(''); setNewName(''); setNewPw('')
+    flash('✅ 학생이 추가되었습니다!')
+  }
+
+  async function addStudentsBulk() {
+    setBulkError('')
+    const lines = bulkText.trim().split('\n').filter(l => l.trim())
+    if (lines.length === 0) { setBulkError('데이터를 입력해주세요.'); return }
+    const parsed = []
+    for (let i = 0; i < lines.length; i++) {
+      const parts = lines[i].split(',').map(s => s.trim())
+      if (parts.length < 3) {
+        setBulkError(`${i + 1}번째 줄: 형식이 올바르지 않습니다. (번호,이름,비밀번호)`)
+        return
+      }
+      const [num, name, pw] = parts
+      if (!num || !name || !pw) {
+        setBulkError(`${i + 1}번째 줄: 빈 항목이 있습니다.`)
+        return
+      }
+      parsed.push({ num, name, pw })
+    }
+    setSaving(true)
+    const updated = { ...students }
+    for (const { num, name, pw } of parsed) {
+      const hash = await hashPassword(pw)
+      updated[num] = { name, passwordHash: hash }
+    }
+    setStudents(updated)
+    await saveClass(classCode, { teacherUid: teacher.uid, className, students: updated })
+    setBulkText('')
+    flash(`✅ ${parsed.length}명의 학생이 추가되었습니다!`)
+    setSaving(false)
+  }
+
+  async function removeStudent(num) {
+    const updated = { ...students }
+    delete updated[num]
+    setStudents(updated)
+    await saveClass(classCode, { teacherUid: teacher.uid, className, students: updated })
+  }
+
+  async function saveGameSettings() {
+    setSaving(true)
+    for (const game of GAMES) {
+      const s = gameSettings[game.id]
+      if (s) await saveActivity(classCode, game.id, { name: game.name, ...s })
+    }
+    // OX퀴즈 문제 저장
+    await saveOXQuestions(classCode, oxQuestions)
+    flash('✅ 게임 설정이 저장되었습니다!')
+    setSaving(false)
+  }
+
+  function updateGameSetting(gameId, field, value) {
+    setGameSettings(prev => ({
+      ...prev,
+      [gameId]: { ...prev[gameId], [field]: value }
+    }))
+  }
+
+  function updateOXQuestion(i, field, value) {
+    setOxQuestions(prev => prev.map((q, idx) => idx === i ? { ...q, [field]: value } : q))
+  }
+
+  async function handleLogout() {
+    await signOut(auth)
+    navigate('/')
+  }
+
+  return (
+    <div className="min-h-screen px-4 py-8 max-w-2xl mx-auto">
+      {/* 상단 헤더 */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <img src={teacher?.photoURL} alt="" className="w-10 h-10 rounded-full" />
+          <div>
+            <p className="font-bold text-carnival-navy">{teacher?.displayName}</p>
+            <p className="text-xs text-carnival-navy/40">{teacher?.email}</p>
+          </div>
+        </div>
+        <button onClick={handleLogout}
+          className="text-sm text-carnival-navy/40 hover:text-carnival-coral transition-colors">
+          로그아웃
+        </button>
+      </div>
+
+      <h1 className="text-2xl font-black text-carnival-navy mb-6">🎛️ 교사 대시보드</h1>
+
+      {/* 탭 */}
+      <div className="flex gap-2 mb-6">
+        {TABS.map((t, i) => (
+          <button key={t} onClick={() => setTab(i)}
+            className={`px-4 py-2 rounded-2xl font-bold text-sm transition-all
+              ${tab === i
+                ? 'bg-carnival-coral text-white shadow-lg'
+                : 'bg-white text-carnival-navy/50 hover:bg-carnival-coral/10'}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* 메시지 */}
+      {msg && (
+        <div className="bg-carnival-green/20 text-green-700 rounded-2xl px-4 py-3 text-sm mb-4 font-medium">
+          {msg}
+        </div>
+      )}
+
+      {/* ── 탭 0: 학급 설정 ── */}
+      {tab === 0 && (
+        <div className="card space-y-4">
+          <h2 className="font-black text-lg">📋 학급 설정</h2>
+
+          <div>
+            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">학급 코드 (학생 로그인용)</label>
+            <input value={classCode} onChange={e => setClassCode(e.target.value)}
+              placeholder="예: class2025-3" className="input-field" />
+            <p className="text-xs text-carnival-navy/30 mt-1">학생들이 로그인할 때 입력하는 코드입니다</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">학급 이름</label>
+            <input value={className} onChange={e => setClassName(e.target.value)}
+              placeholder="예: 3학년 2반" className="input-field" />
+          </div>
+
+          <hr className="border-gray-100" />
+          <h3 className="font-bold text-carnival-navy/70">🌱 그라운드카드 연동</h3>
+
+          <div>
+            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">API 키</label>
+            <input value={apiKey} onChange={e => setApiKey(e.target.value)}
+              type="password" placeholder="growndcard.com에서 발급받은 API 키"
+              className="input-field font-mono" />
+            <p className="text-xs text-carnival-navy/30 mt-1">
+              growndcard.com → 내 정보 → API 키 관리에서 발급
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">그라운드 학급 ID</label>
+            <input value={classId} onChange={e => setClassId(e.target.value)}
+              placeholder="그라운드카드 학급 ID" className="input-field" />
+          </div>
+
+          <button onClick={saveSettings} disabled={saving} className="btn-primary w-full">
+            {saving ? '저장 중...' : '💾 저장'}
+          </button>
+        </div>
+      )}
+
+      {/* ── 탭 1: 학생 관리 ── */}
+      {tab === 1 && (
+        <div className="card space-y-4">
+          <h2 className="font-black text-lg">👥 학생 관리</h2>
+          {!classCode && (
+            <p className="text-sm text-carnival-coral">먼저 학급 설정 탭에서 학급 코드를 설정하세요.</p>
+          )}
+
+          {/* 모드 토글 */}
+          <div className="flex gap-2">
+            <button onClick={() => setBulkMode(false)}
+              className={`flex-1 py-2 rounded-2xl text-sm font-bold transition-all ${
+                !bulkMode ? 'bg-carnival-sky text-white shadow' : 'bg-gray-100 text-carnival-navy/50'}`}>
+              개별 추가
+            </button>
+            <button onClick={() => setBulkMode(true)}
+              className={`flex-1 py-2 rounded-2xl text-sm font-bold transition-all ${
+                bulkMode ? 'bg-carnival-sky text-white shadow' : 'bg-gray-100 text-carnival-navy/50'}`}>
+              📋 일괄 등록
+            </button>
+          </div>
+
+          {/* 개별 추가 */}
+          {!bulkMode && (
+            <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
+              <p className="font-bold text-sm">새 학생 추가</p>
+              <div className="flex gap-2">
+                <input value={newNum} onChange={e => setNewNum(e.target.value)}
+                  placeholder="번호" className="input-field w-20" />
+                <input value={newName} onChange={e => setNewName(e.target.value)}
+                  placeholder="이름" className="input-field flex-1" />
+                <input value={newPw} onChange={e => setNewPw(e.target.value)}
+                  placeholder="초기 비밀번호" type="password" className="input-field flex-1" />
+              </div>
+              <button onClick={addStudent} className="btn-sky w-full text-sm py-2">
+                ➕ 추가
+              </button>
+            </div>
+          )}
+
+          {/* 일괄 등록 */}
+          {bulkMode && (
+            <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
+              <p className="font-bold text-sm">📋 일괄 등록</p>
+              <p className="text-xs text-carnival-navy/50">한 줄에 하나씩: <strong>번호,이름,비밀번호</strong></p>
+              <textarea
+                value={bulkText}
+                onChange={e => { setBulkText(e.target.value); setBulkError('') }}
+                placeholder={`1,김철수,1234\n2,이영희,5678\n3,박민준,0000`}
+                className="input-field text-sm font-mono min-h-[160px] resize-y"
+                rows={6}
+              />
+              {bulkError && (
+                <p className="text-red-500 text-sm">❌ {bulkError}</p>
+              )}
+              <button onClick={addStudentsBulk} disabled={saving} className="btn-sky w-full text-sm py-2">
+                {saving ? '등록 중...' : `➕ 일괄 등록`}
+              </button>
+            </div>
+          )}
+
+          {/* 학생 목록 */}
+          <div className="space-y-2">
+            {Object.entries(students).sort(([a], [b]) => Number(a) - Number(b)).map(([num, s]) => (
+              <div key={num}
+                className="flex items-center justify-between bg-white border border-gray-100 rounded-2xl px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="badge bg-carnival-yellow text-carnival-navy">{num}번</span>
+                  <span className="font-bold">{s.name}</span>
+                </div>
+                <button onClick={() => removeStudent(num)}
+                  className="text-xs text-carnival-navy/30 hover:text-carnival-coral transition-colors">
+                  삭제
+                </button>
+              </div>
+            ))}
+            {Object.keys(students).length === 0 && (
+              <p className="text-center text-carnival-navy/30 py-6 text-sm">
+                등록된 학생이 없습니다
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 탭 2: 게임 관리 ── */}
+      {tab === 2 && (
+        <div className="space-y-4">
+          {!classCode && (
+            <p className="text-sm text-carnival-coral card">먼저 학급 설정 탭에서 학급 코드를 설정하세요.</p>
+          )}
+
+          {GAMES.map(game => {
+            const s = gameSettings[game.id] || {}
+            return (
+              <div key={game.id} className="card space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{game.icon}</span>
+                    <span className="font-black">{game.name}</span>
+                    <span className="badge bg-gray-100 text-gray-500 text-xs">{game.duration}</span>
+                  </div>
+                  {/* 활성화 토글 */}
+                  <button
+                    onClick={() => updateGameSetting(game.id, 'enabled', !s.enabled)}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${
+                      s.enabled ? 'bg-carnival-green' : 'bg-gray-200'
+                    }`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${
+                      s.enabled ? 'left-7' : 'left-1'
+                    }`} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-carnival-navy/50 mb-1">
+                      활동 비밀번호 (선택)
+                    </label>
+                    <input
+                      value={s.activityPassword || ''}
+                      onChange={e => updateGameSetting(game.id, 'activityPassword', e.target.value)}
+                      placeholder="없으면 비워두기"
+                      className="input-field text-sm py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-carnival-navy/50 mb-1">
+                      지급 포인트
+                    </label>
+                    <input
+                      type="number"
+                      value={s.pointsPerCompletion || 10}
+                      onChange={e => updateGameSetting(game.id, 'pointsPerCompletion', Number(e.target.value))}
+                      className="input-field text-sm py-2"
+                    />
+                  </div>
+                </div>
+
+                {/* OX퀴즈 문제 편집 */}
+                {game.id === 'ox-quiz' && s.enabled && (
+                  <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
+                    <p className="font-bold text-sm">📝 OX퀴즈 문제 편집</p>
+                    {oxQuestions.map((q, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <span className="text-xs text-carnival-navy/40 w-5">{i + 1}</span>
+                        <input
+                          value={q.question}
+                          onChange={e => updateOXQuestion(i, 'question', e.target.value)}
+                          placeholder="문제를 입력하세요"
+                          className="input-field flex-1 text-sm py-2"
+                        />
+                        <select
+                          value={q.answer}
+                          onChange={e => updateOXQuestion(i, 'answer', e.target.value === 'true')}
+                          className="input-field w-16 text-sm py-2"
+                        >
+                          <option value="true">⭕</option>
+                          <option value="false">❌</option>
+                        </select>
+                        <button
+                          onClick={() => setOxQuestions(prev => prev.filter((_, idx) => idx !== i))}
+                          className="text-xs text-carnival-navy/30 hover:text-carnival-coral"
+                        >✕</button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setOxQuestions(prev => [...prev, { question: '', answer: true }])}
+                      className="text-sm text-carnival-sky font-bold hover:underline"
+                    >
+                      + 문제 추가
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          <button onClick={saveGameSettings} disabled={saving} className="btn-primary w-full">
+            {saving ? '저장 중...' : '💾 게임 설정 저장'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}

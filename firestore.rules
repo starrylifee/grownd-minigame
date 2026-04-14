@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 교사 문서: 본인만 읽기/쓰기
+    match /teachers/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // 학급 문서: 해당 교사만 쓰기, 읽기는 인증 없이 허용 (학생 로그인용)
+    match /classes/{classCode} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && (resource == null || resource.data.teacherUid == request.auth.uid);
+    }
+
+    // 활동 설정: 교사만 쓰기, 읽기는 누구나 (학생 게임 시작용)
+    match /activities/{activityId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 활동 그룹 요약 (로비 조회용)
+    match /activityGroups/{classCode} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}

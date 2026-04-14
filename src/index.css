@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-carnival-cream font-sans text-carnival-navy;
+    background-image: radial-gradient(circle, #e0d5c8 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-carnival-coral text-white font-bold py-3 px-6 rounded-2xl shadow-lg
+           hover:scale-105 hover:shadow-xl active:scale-95
+           transition-all duration-150 cursor-pointer;
+  }
+
+  .btn-secondary {
+    @apply bg-carnival-yellow text-carnival-navy font-bold py-3 px-6 rounded-2xl shadow-lg
+           hover:scale-105 hover:shadow-xl active:scale-95
+           transition-all duration-150 cursor-pointer;
+  }
+
+  .btn-sky {
+    @apply bg-carnival-sky text-white font-bold py-3 px-6 rounded-2xl shadow-lg
+           hover:scale-105 hover:shadow-xl active:scale-95
+           transition-all duration-150 cursor-pointer;
+  }
+
+  .card {
+    @apply bg-white rounded-3xl shadow-xl p-6 border-2 border-white;
+  }
+
+  .input-field {
+    @apply w-full border-2 border-gray-200 rounded-2xl px-4 py-3
+           focus:outline-none focus:border-carnival-sky focus:ring-2 focus:ring-carnival-sky/30
+           text-carnival-navy font-medium transition-all duration-150;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold;
+  }
+}
