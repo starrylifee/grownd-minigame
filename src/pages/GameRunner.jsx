@@ -46,7 +46,13 @@ export default function GameRunner() {
   async function handleComplete(gameResult) {
     setAwarding(true)
     try {
-      const res = await awardPoints(student.classCode, student.studentCode, gameId)
+      // scoreRatio가 있으면 비례 포인트 지급 (수학퀴즈 등)
+      const res = await awardPoints(
+        student.classCode,
+        student.studentCode,
+        gameId,
+        gameResult?.scoreRatio,
+      )
       setResult({
         points:  res.points  ?? activity.pointsPerCompletion,
         message: res.message ?? '포인트가 지급됐어요!',

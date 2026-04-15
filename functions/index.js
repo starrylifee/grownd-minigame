@@ -32,7 +32,7 @@ function todayKST() {
 exports.awardPoints = onCall(
   { region: 'asia-northeast3' },
   async (request) => {
-    const { classCode, studentCode, gameId } = request.data
+    const { classCode, studentCode, gameId, scoreRatio } = request.data
 
     if (!classCode || !studentCode || !gameId) {
       throw new HttpsError('invalid-argument', '필수 파라미터가 누락되었습니다.')
@@ -62,6 +62,11 @@ exports.awardPoints = onCall(
     }
     const actData = actSnap.data()
     const { pointsPerCompletion = 10, name = '미니게임' } = actData
+
+    // scoreRatio(0~1)가 전달되면 비례 포인트 계산 (수학퀴즈 틀린 문제 감점)
+    const finalPoints = (typeof scoreRatio === 'number' && scoreRatio >= 0 && scoreRatio <= 1)
+      ? Math.round(pointsPerCompletion * scoreRatio)
+      : pointsPerCompletion
 
     const dailyLimit = actData.dailyLimit
       ?? DEFAULT_DAILY_LIMIT[gameId]
@@ -101,7 +106,7 @@ exports.awardPoints = onCall(
       },
       body: JSON.stringify({
         type:        'reward',
-        points:      pointsPerCompletion,
+        points:      finalPoints,
         description: `${name} 완료`,
       }),
     })
@@ -116,8 +121,8 @@ exports.awardPoints = onCall(
 
     return {
       success: true,
-      points:  pointsPerCompletion,
-      message: `${name} 완료! ${pointsPerCompletion}P가 지급됐어요 🌱`,
+      points:  finalPoints,
+      message: `${name} 완료! ${finalPoints}P가 지급됐어요 🌱`,
       grownd:  data,
     }
   }

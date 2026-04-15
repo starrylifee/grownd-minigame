@@ -4,23 +4,24 @@
  * [미니게임 인터페이스 규약]
  * props: { activityId, activity, onComplete, onExit }
  * - onComplete(result) 호출 시 플랫폼이 자동으로 포인트를 지급합니다.
- * - 이 컴포넌트에서 직접 포인트 지급 코드를 작성하지 마세요.
  *
- * [유형 구성]
- * single-add       : 한 자리 덧셈 (1~9 + 1~9)
- * double-add       : 두 자리 덧셈 - 받아올림 없음
- * double-add-carry : 두 자리 덧셈 - 받아올림 있음
- * single-mul       : 한 자리 곱셈 (2~9 × 2~9)
+ * [점수 방식]
+ * - 정답: +1점  / 오답 또는 타임오버: 0점
+ * - 최종 포인트 = 설정 포인트 × (정답 수 / 10)  → 비례 지급
+ *
+ * [타이머]
+ * - 문제당 5초. 시간 초과 시 자동으로 오답 처리 후 다음 문제
  */
 import { useState, useRef, useEffect } from 'react'
 
-const TOTAL = 10
+const TOTAL     = 10
+const TIMER_MAX = 5  // 문제당 제한 시간(초)
 
 const TYPE_INFO = {
-  'single-add':       { label: '한 자리 덧셈',            emoji: '➕', color: 'bg-green-100 text-green-700 border-green-300' },
+  'single-add':       { label: '한 자리 덧셈',               emoji: '➕', color: 'bg-green-100 text-green-700 border-green-300' },
   'double-add':       { label: '두 자리 덧셈 (받아올림 없음)', emoji: '📐', color: 'bg-blue-100 text-blue-700 border-blue-300' },
   'double-add-carry': { label: '두 자리 덧셈 (받아올림 있음)', emoji: '🔢', color: 'bg-orange-100 text-orange-700 border-orange-300' },
-  'single-mul':       { label: '한 자리 곱셈',            emoji: '✖️', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+  'single-mul':       { label: '한 자리 곱셈',               emoji: '✖️', color: 'bg-purple-100 text-purple-700 border-purple-300' },
 }
 
 function generateQuestion(mathType) {
@@ -31,26 +32,24 @@ function generateQuestion(mathType) {
       return { a, b, op: '+', answer: a + b }
     }
     case 'double-add': {
-      // 받아올림 없음: 일의 자리 합 < 10, 결과 두 자리
       let a, b
       do {
-        a = Math.floor(Math.random() * 40) + 10  // 10~49
-        b = Math.floor(Math.random() * 40) + 10  // 10~49
+        a = Math.floor(Math.random() * 40) + 10
+        b = Math.floor(Math.random() * 40) + 10
       } while ((a % 10 + b % 10) >= 10)
       return { a, b, op: '+', answer: a + b }
     }
     case 'double-add-carry': {
-      // 받아올림 있음: 일의 자리 합 >= 10
       let a, b
       do {
-        a = Math.floor(Math.random() * 79) + 11  // 11~89
-        b = Math.floor(Math.random() * 79) + 11  // 11~89
+        a = Math.floor(Math.random() * 79) + 11
+        b = Math.floor(Math.random() * 79) + 11
       } while ((a % 10 + b % 10) < 10 || a + b > 199)
       return { a, b, op: '+', answer: a + b }
     }
     case 'single-mul': {
-      const a = Math.floor(Math.random() * 8) + 2  // 2~9
-      const b = Math.floor(Math.random() * 8) + 2  // 2~9
+      const a = Math.floor(Math.random() * 8) + 2
+      const b = Math.floor(Math.random() * 8) + 2
       return { a, b, op: '×', answer: a * b }
     }
     default: {
@@ -65,6 +64,33 @@ function makeQuestions(mathType) {
   return Array.from({ length: TOTAL }, () => generateQuestion(mathType))
 }
 
+// SVG 원형 타이머
+function TimerRing({ timeLeft }) {
+  const radius        = 22
+  const circumference = 2 * Math.PI * radius
+  const offset        = circumference * (1 - timeLeft / TIMER_MAX)
+  const color = timeLeft > 3 ? '#22c55e' : timeLeft > 1 ? '#eab308' : '#ef4444'
+
+  return (
+    <div className="relative w-14 h-14 flex items-center justify-center">
+      <svg className="absolute inset-0 -rotate-90" width="56" height="56">
+        <circle cx="28" cy="28" r={radius} fill="none" stroke="#e5e7eb" strokeWidth="4" />
+        <circle
+          cx="28" cy="28" r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="4"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 0.9s linear, stroke 0.3s' }}
+        />
+      </svg>
+      <span className="text-lg font-black" style={{ color }}>{timeLeft}</span>
+    </div>
+  )
+}
+
 export default function MathQuiz({ activity, onComplete, onExit }) {
   const mathType = activity?.mathType || 'single-add'
   const info     = TYPE_INFO[mathType] || TYPE_INFO['single-add']
@@ -72,31 +98,69 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
   const [questions]           = useState(() => makeQuestions(mathType))
   const [idx, setIdx]         = useState(0)
   const [input, setInput]     = useState('')
-  const [correct, setCorrect] = useState(null)
+  const [correct, setCorrect] = useState(null)  // null | true | false | 'timeout'
   const [score, setScore]     = useState(0)
+  const [timeLeft, setTimeLeft] = useState(TIMER_MAX)
   const inputRef              = useRef(null)
 
-  useEffect(() => { inputRef.current?.focus() }, [idx])
+  // 최신 idx·score를 타이머 콜백에서 참조하기 위한 ref
+  const idxRef   = useRef(idx)
+  const scoreRef = useRef(score)
+  idxRef.current   = idx
+  scoreRef.current = score
+
+  // 새 문제로 넘어갈 때 타이머 리셋
+  useEffect(() => {
+    setTimeLeft(TIMER_MAX)
+    inputRef.current?.focus()
+  }, [idx])
+
+  // 카운트다운 + 타임오버 처리
+  useEffect(() => {
+    if (correct !== null) return  // 이미 답변됨 → 타이머 중지
+
+    if (timeLeft <= 0) {
+      // 타임오버: 오답 처리
+      setCorrect('timeout')
+      const next = idxRef.current + 1
+      const s    = scoreRef.current
+      const id   = setTimeout(() => {
+        if (next >= TOTAL) {
+          onComplete({ score: s, scoreRatio: s / TOTAL, passed: true, mathType })
+        } else {
+          setIdx(next)
+          setInput('')
+          setCorrect(null)
+        }
+      }, 1000)
+      return () => clearTimeout(id)
+    }
+
+    const id = setTimeout(() => setTimeLeft(t => t - 1), 1000)
+    return () => clearTimeout(id)
+  }, [timeLeft, correct])
 
   const q        = questions[idx]
   const progress = (idx / TOTAL) * 100
 
   function handleSubmit(e) {
     e.preventDefault()
+    if (correct !== null) return  // 타임오버 중 입력 방지
+
     const num = Number(input)
     const ok  = num === q.answer
-    setCorrect(ok)
+    setCorrect(ok ? true : false)
     if (ok) setScore(s => s + 1)
 
     setTimeout(() => {
-      const next = idx + 1
+      const next      = idx + 1
+      const newScore  = ok ? score + 1 : score
       if (next >= TOTAL) {
-        onComplete({ score: ok ? score + 1 : score, passed: true, mathType })
+        onComplete({ score: newScore, scoreRatio: newScore / TOTAL, passed: true, mathType })
       } else {
         setIdx(next)
         setInput('')
         setCorrect(null)
-        inputRef.current?.focus()
       }
     }, 700)
   }
@@ -119,11 +183,11 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
           <span>{info.label}</span>
         </div>
 
-        {/* 진행 바 */}
-        <div className="mb-6">
+        {/* 진행 바 + 점수 */}
+        <div className="mb-4">
           <div className="flex justify-between text-sm font-bold text-carnival-navy/50 mb-1">
-            <span>진행도</span>
-            <span>{idx} / {TOTAL}</span>
+            <span>진행도 {idx} / {TOTAL}</span>
+            <span>정답 {score}개</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-3">
             <div
@@ -133,8 +197,13 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
           </div>
         </div>
 
-        {/* 문제 */}
-        <div className="card text-center mb-6 py-10">
+        {/* 문제 + 타이머 */}
+        <div className="card text-center mb-5 py-8 relative">
+          {/* 타이머 */}
+          <div className="absolute top-4 right-4">
+            <TimerRing timeLeft={correct !== null ? 0 : timeLeft} />
+          </div>
+
           <p className="text-xs text-carnival-navy/40 mb-3 font-medium">
             {idx + 1}번 문제
           </p>
@@ -155,6 +224,12 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
             <p className="text-carnival-navy/50 text-sm mt-1">정답은 <strong>{q.answer}</strong> 이에요</p>
           </div>
         )}
+        {correct === 'timeout' && (
+          <div className="text-center mb-4">
+            <p className="text-orange-500 font-black text-2xl">⏰ 시간 초과!</p>
+            <p className="text-carnival-navy/50 text-sm mt-1">정답은 <strong>{q.answer}</strong> 이에요</p>
+          </div>
+        )}
 
         {/* 입력 */}
         {correct === null && (
@@ -171,6 +246,13 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
               →
             </button>
           </form>
+        )}
+
+        {/* 점수 예상 안내 */}
+        {correct === null && idx > 0 && (
+          <p className="text-center text-xs text-carnival-navy/30 mt-3">
+            현재 {score}/{idx}정답 → 예상 포인트 {Math.round((activity?.pointsPerCompletion || 10) * score / TOTAL)}P
+          </p>
         )}
       </div>
     </div>

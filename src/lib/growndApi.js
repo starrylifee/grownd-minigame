@@ -10,8 +10,14 @@ import { functions } from './firebase'
  * @param {string} gameId - 게임 ID (활동 ID)
  * @returns {Promise<{success: boolean, points: number, message: string}>}
  */
-export async function awardPoints(classCode, studentCode, gameId) {
+/**
+ * @param {string}  classCode
+ * @param {string}  studentCode
+ * @param {string}  gameId
+ * @param {number?} scoreRatio  - 0~1, 지정 시 포인트 비례 지급 (수학퀴즈 등)
+ */
+export async function awardPoints(classCode, studentCode, gameId, scoreRatio) {
   const fn = httpsCallable(functions, 'awardPoints')
-  const result = await fn({ classCode, studentCode, gameId })
+  const result = await fn({ classCode, studentCode, gameId, scoreRatio })
   return result.data
 }
