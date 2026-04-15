@@ -115,30 +115,36 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
     inputRef.current?.focus()
   }, [idx])
 
-  // 카운트다운 + 타임오버 처리
+  // ① 카운트다운 (정답/오답/타임오버 상태면 중지)
   useEffect(() => {
-    if (correct !== null) return  // 이미 답변됨 → 타이머 중지
-
-    if (timeLeft <= 0) {
-      // 타임오버: 오답 처리
-      setCorrect('timeout')
-      const next = idxRef.current + 1
-      const s    = scoreRef.current
-      const id   = setTimeout(() => {
-        if (next >= TOTAL) {
-          onComplete({ score: s, scoreRatio: s / TOTAL, passed: true, mathType })
-        } else {
-          setIdx(next)
-          setInput('')
-          setCorrect(null)
-        }
-      }, 1000)
-      return () => clearTimeout(id)
-    }
-
+    if (correct !== null || timeLeft <= 0) return
     const id = setTimeout(() => setTimeLeft(t => t - 1), 1000)
     return () => clearTimeout(id)
   }, [timeLeft, correct])
+
+  // ② 시간 0 감지 → 타임오버 표시
+  useEffect(() => {
+    if (timeLeft > 0 || correct !== null) return
+    setCorrect('timeout')
+  }, [timeLeft, correct])
+
+  // ③ 타임오버 후 다음 문제로 이동
+  //    correct 변화로 클린업이 취소되지 않도록 별도 effect로 분리
+  useEffect(() => {
+    if (correct !== 'timeout') return
+    const next = idxRef.current + 1
+    const s    = scoreRef.current
+    const id   = setTimeout(() => {
+      if (next >= TOTAL) {
+        onComplete({ score: s, scoreRatio: s / TOTAL, passed: true, mathType })
+      } else {
+        setIdx(next)
+        setInput('')
+        setCorrect(null)
+      }
+    }, 1000)
+    return () => clearTimeout(id)
+  }, [correct])
 
   const q        = questions[idx]
   const progress = (idx / TOTAL) * 100
