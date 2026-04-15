@@ -5,7 +5,7 @@ import { auth }                from '../lib/firebase'
 import { useAuth }             from '../context/AuthContext'
 import {
   getTeacher, saveTeacher, getClass, saveClass,
-  saveActivity, getActivity, saveOXQuestions, hashPassword,
+  saveActivity, getActivity, hashPassword,
   getRaidBoss, resetRaidBoss,
 } from '../lib/firestore'
 import { GAMES } from '../config/games'
@@ -34,6 +34,7 @@ function defaultSettingsFor(game) {
     dailyLimit:          game.defaultDailyLimit || 5,
     practiceMode:        false,
   }
+  if (game.id === 'word-typing') return { ...base, typingLevel: 1 }
   if (game.id === 'typing')      return { ...base, typingLevel: 1 }
   if (game.id === 'math-quiz')   return { ...base, mathType: 'single-add' }
   if (game.id === 'raid-typing') return {
@@ -72,9 +73,6 @@ export default function TeacherDashboard() {
   // 게임 설정
   const [gameSettings, setGameSettings] = useState({})
 
-  // OX퀴즈 문제
-  const [oxQuestions, setOxQuestions] = useState([{ question: '', answer: true }])
-
   // 레이드 보스 현황
   const [raidBossStatus, setRaidBossStatus] = useState(null)
   const [resettingBoss, setResettingBoss]   = useState(false)
@@ -106,10 +104,6 @@ export default function TeacherDashboard() {
         settings[game.id] = { ...defaultSettingsFor(game), ...(act || {}) }
       }
       setGameSettings(settings)
-
-      // OX퀴즈 문제 로드
-      const ox = await getActivity(classCode, 'ox-quiz')
-      if (ox?.questions?.length) setOxQuestions(ox.questions)
 
       // 레이드 보스 현황 로드
       const boss = await getRaidBoss(classCode)
@@ -179,7 +173,6 @@ export default function TeacherDashboard() {
       const s = gameSettings[game.id]
       if (s) await saveActivity(classCode, game.id, { name: game.name, ...s })
     }
-    await saveOXQuestions(classCode, oxQuestions)
     flash('✅ 게임 설정이 저장되었습니다!')
     setSaving(false)
   }
@@ -189,10 +182,6 @@ export default function TeacherDashboard() {
       ...prev,
       [gameId]: { ...prev[gameId], [field]: value },
     }))
-  }
-
-  function updateOXQuestion(i, field, value) {
-    setOxQuestions(prev => prev.map((q, idx) => idx === i ? { ...q, [field]: value } : q))
   }
 
   async function handleResetRaidBoss() {
@@ -447,8 +436,8 @@ export default function TeacherDashboard() {
                   </button>
                 </div>
 
-                {/* ── 한글 타자 전용 설정 ── */}
-                {game.id === 'typing' && s.enabled && (
+                {/* ── 낱말 타자 / 문장 타자 레벨 설정 ── */}
+                {(game.id === 'word-typing' || game.id === 'typing') && s.enabled && (
                   <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
                     <p className="font-bold text-sm">⌨️ 타자 레벨 설정</p>
                     <div className="space-y-2">
@@ -460,9 +449,9 @@ export default function TeacherDashboard() {
                               : 'border-gray-100 bg-white'}`}>
                           <input
                             type="radio"
-                            name="typingLevel"
+                            name={`typingLevel-${game.id}`}
                             checked={s.typingLevel === lv}
-                            onChange={() => updateGameSetting('typing', 'typingLevel', lv)}
+                            onChange={() => updateGameSetting(game.id, 'typingLevel', lv)}
                             className="accent-carnival-sky"
                           />
                           <span className="text-sm font-medium">{TYPING_LEVEL_INFO[lv]}</span>
@@ -497,41 +486,6 @@ export default function TeacherDashboard() {
                   </div>
                 )}
 
-                {/* ── OX퀴즈 문제 편집 ── */}
-                {game.id === 'ox-quiz' && s.enabled && (
-                  <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
-                    <p className="font-bold text-sm">📝 OX퀴즈 문제 편집</p>
-                    {oxQuestions.map((q, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <span className="text-xs text-carnival-navy/40 w-5">{i + 1}</span>
-                        <input
-                          value={q.question}
-                          onChange={e => updateOXQuestion(i, 'question', e.target.value)}
-                          placeholder="문제를 입력하세요"
-                          className="input-field flex-1 text-sm py-2"
-                        />
-                        <select
-                          value={q.answer}
-                          onChange={e => updateOXQuestion(i, 'answer', e.target.value === 'true')}
-                          className="input-field w-16 text-sm py-2"
-                        >
-                          <option value="true">⭕</option>
-                          <option value="false">❌</option>
-                        </select>
-                        <button
-                          onClick={() => setOxQuestions(prev => prev.filter((_, idx) => idx !== i))}
-                          className="text-xs text-carnival-navy/30 hover:text-carnival-coral"
-                        >✕</button>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => setOxQuestions(prev => [...prev, { question: '', answer: true }])}
-                      className="text-sm text-carnival-sky font-bold hover:underline"
-                    >
-                      + 문제 추가
-                    </button>
-                  </div>
-                )}
 
                 {/* ── 학급 레이드 전용 설정 ── */}
                 {game.id === 'raid-typing' && s.enabled && (
