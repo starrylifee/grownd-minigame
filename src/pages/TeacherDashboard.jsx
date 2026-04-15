@@ -32,6 +32,7 @@ function defaultSettingsFor(game) {
     activityPassword:    '',
     pointsPerCompletion: game.defaultPoints    || 10,
     dailyLimit:          game.defaultDailyLimit || 5,
+    practiceMode:        false,
   }
   if (game.id === 'typing')      return { ...base, typingLevel: 1 }
   if (game.id === 'math-quiz')   return { ...base, mathType: 'single-add' }
@@ -426,6 +427,24 @@ export default function TeacherDashboard() {
                       className="input-field text-sm py-2"
                     />
                   </div>
+                </div>
+
+                {/* 연습 모드 허용 토글 */}
+                <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                  <div>
+                    <p className="text-sm font-bold text-amber-800">✏️ 연습 모드 허용</p>
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      횟수 초과 학생도 접속 가능 (포인트 미지급)
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => updateGameSetting(game.id, 'practiceMode', !s.practiceMode)}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${
+                      s.practiceMode ? 'bg-amber-400' : 'bg-gray-200'}`}
+                  >
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all duration-200 ${
+                      s.practiceMode ? 'left-7' : 'left-1'}`} />
+                  </button>
                 </div>
 
                 {/* ── 한글 타자 전용 설정 ── */}

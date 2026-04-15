@@ -19,7 +19,8 @@ export default function GameRunner() {
   const [passwordOk, setPasswordOk]       = useState(false)
   const [result, setResult]               = useState(null)
   const [awarding, setAwarding]           = useState(false)
-  const [limitReached, setLimitReached]   = useState(null) // { count, limit }
+  const [limitReached, setLimitReached]   = useState(null)   // { count, limit }
+  const [isPracticeMode, setIsPracticeMode] = useState(false) // 연습 모드
 
   useEffect(() => {
     if (!game) { navigate('/student/lobby'); return }
@@ -27,16 +28,22 @@ export default function GameRunner() {
       const act = await getActivity(student.classCode, gameId)
       if (!act?.enabled) { navigate('/student/lobby'); return }
 
-      // 일일 플레이 횟수 체크
       const dailyLimit = act.dailyLimit ?? game.defaultDailyLimit ?? 5
       const count      = await getTodayPlayCount(student.classCode, gameId, student.studentCode)
-      if (count >= dailyLimit) {
-        setActivity(act)
-        setLimitReached({ count, limit: dailyLimit })
-        return
-      }
 
       setActivity(act)
+
+      if (count >= dailyLimit) {
+        if (act.practiceMode) {
+          // 교사가 연습 모드 허용 → 포인트 없이 플레이 가능
+          setIsPracticeMode(true)
+        } else {
+          // 연습 모드 미허용 → 접속 차단
+          setLimitReached({ count, limit: dailyLimit })
+          return
+        }
+      }
+
       if (act.activityPassword) setNeedPassword(true)
       else setPasswordOk(true)
     }
@@ -44,9 +51,14 @@ export default function GameRunner() {
   }, [gameId])
 
   async function handleComplete(gameResult) {
+    // 연습 모드: 포인트 지급 없이 바로 완료
+    if (isPracticeMode) {
+      setResult({ points: 0, message: '연습 완료! 💪 오늘 도전 횟수를 모두 썼지만 연습은 계속할 수 있어요.' })
+      return
+    }
+
     setAwarding(true)
     try {
-      // scoreRatio가 있으면 비례 포인트 지급 (수학퀴즈 등)
       const res = await awardPoints(
         student.classCode,
         student.studentCode,
@@ -76,7 +88,7 @@ export default function GameRunner() {
     )
   }
 
-  // 일일 횟수 초과 화면
+  // 일일 횟수 초과 + 연습 모드 미허용 → 접속 차단
   if (limitReached) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4">
@@ -88,7 +100,7 @@ export default function GameRunner() {
             <strong className="text-carnival-coral">{limitReached.count}번</strong> 플레이했어요.
           </p>
           <p className="text-carnival-navy/40 text-xs">
-            하루 최대 {limitReached.limit}번까지 플레이할 수 있어요.
+            하루 최대 {limitReached.limit}번까지 포인트를 받을 수 있어요.
           </p>
           <button
             onClick={() => navigate('/student/lobby')}
@@ -130,6 +142,13 @@ export default function GameRunner() {
             <div className="text-4xl animate-bounce-slow mb-3">🌱</div>
             <p className="font-bold">포인트 지급 중...</p>
           </div>
+        </div>
+      )}
+
+      {/* 연습 모드 배너 */}
+      {isPracticeMode && passwordOk && !result && (
+        <div className="fixed top-0 inset-x-0 z-30 bg-amber-400 text-amber-900 text-center text-sm font-bold py-2 px-4 shadow">
+          ✏️ 연습 모드 — 오늘 도전 횟수를 모두 사용했어요. 이 플레이는 포인트가 지급되지 않아요.
         </div>
       )}
 
