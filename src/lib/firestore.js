@@ -1,5 +1,6 @@
 import {
-  doc, getDoc, setDoc, updateDoc, collection, getDocs, deleteDoc
+  doc, getDoc, setDoc, updateDoc, collection, getDocs, deleteDoc,
+  increment, onSnapshot
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -55,7 +56,6 @@ export async function getActivity(classCode, gameId) {
 }
 
 export async function getAllActivities(classCode) {
-  // 해당 학급의 모든 활동 가져오기
   const snap = await getDoc(doc(db, 'activityGroups', classCode))
   return snap.exists() ? snap.data() : {}
 }
@@ -63,7 +63,6 @@ export async function getAllActivities(classCode) {
 export async function saveActivity(classCode, gameId, data) {
   const id = activityId(classCode, gameId)
   await setDoc(doc(db, 'activities', id), { ...data, classCode, gameId }, { merge: true })
-  // activityGroups에도 요약 저장 (로비 조회용)
   await setDoc(
     doc(db, 'activityGroups', classCode),
     { [gameId]: { enabled: data.enabled, pointsPerCompletion: data.pointsPerCompletion } },
@@ -78,4 +77,68 @@ export async function saveOXQuestions(classCode, questions) {
     { questions },
     { merge: true }
   )
+}
+
+// ── 일일 플레이 횟수 추적 ─────────────────────────────────
+function todayKST() {
+  // UTC+9 기준 날짜 YYYY-MM-DD
+  const now = new Date()
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  return kst.toISOString().slice(0, 10)
+}
+
+function playLogId(classCode, gameId, studentCode) {
+  return `${classCode}_${gameId}_${studentCode}_${todayKST()}`
+}
+
+export async function getTodayPlayCount(classCode, gameId, studentCode) {
+  const snap = await getDoc(doc(db, 'playLogs', playLogId(classCode, gameId, studentCode)))
+  return snap.exists() ? (snap.data().count || 0) : 0
+}
+
+// ── 레이드 보스 ────────────────────────────────────────────
+export async function getRaidBoss(classCode) {
+  const snap = await getDoc(doc(db, 'raidBoss', classCode))
+  return snap.exists() ? snap.data() : null
+}
+
+/**
+ * 레이드 보스에 데미지를 추가합니다 (클라이언트 → Firestore 실시간 누적).
+ * @param {string} classCode
+ * @param {string} studentCode
+ * @param {number} damage
+ */
+export async function contributeToRaid(classCode, studentCode, damage) {
+  const ref = doc(db, 'raidBoss', classCode)
+  await updateDoc(ref, {
+    currentDamage: increment(damage),
+    [`contributions.${studentCode}`]: increment(damage),
+  })
+}
+
+/**
+ * 레이드 보스를 초기화합니다 (교사 대시보드 전용).
+ */
+export async function resetRaidBoss(classCode, { bossName, bossEmoji, bossStory, totalHp }) {
+  await setDoc(doc(db, 'raidBoss', classCode), {
+    classCode,
+    bossName,
+    bossEmoji,
+    bossStory,
+    totalHp,
+    currentDamage: 0,
+    defeated: false,
+    contributions: {},
+    resetAt: new Date().toISOString(),
+  })
+}
+
+/**
+ * 레이드 보스 상태를 실시간으로 구독합니다.
+ * @returns unsubscribe 함수
+ */
+export function subscribeToRaidBoss(classCode, callback) {
+  return onSnapshot(doc(db, 'raidBoss', classCode), (snap) => {
+    callback(snap.exists() ? snap.data() : null)
+  })
 }

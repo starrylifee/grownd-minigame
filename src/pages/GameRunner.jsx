@@ -1,15 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
-import { getActivity } from '../lib/firestore'
-import { awardPoints } from '../lib/growndApi'
-import { getGame } from '../config/games'
-import ActivityPasswordModal from '../components/ActivityPasswordModal'
-import PointRewardModal from '../components/PointRewardModal'
+import { useState, useEffect }    from 'react'
+import { useAuth }                from '../context/AuthContext'
+import { getActivity, getTodayPlayCount } from '../lib/firestore'
+import { awardPoints }            from '../lib/growndApi'
+import { getGame }                from '../config/games'
+import ActivityPasswordModal      from '../components/ActivityPasswordModal'
+import PointRewardModal           from '../components/PointRewardModal'
 
 export default function GameRunner() {
-  const { gameId } = useParams()
-  const navigate = useNavigate()
+  const { gameId }  = useParams()
+  const navigate    = useNavigate()
   const { student } = useAuth()
 
   const game = getGame(gameId)
@@ -17,14 +17,25 @@ export default function GameRunner() {
   const [activity, setActivity]           = useState(null)
   const [needPassword, setNeedPassword]   = useState(false)
   const [passwordOk, setPasswordOk]       = useState(false)
-  const [result, setResult]               = useState(null) // { points, message }
+  const [result, setResult]               = useState(null)
   const [awarding, setAwarding]           = useState(false)
+  const [limitReached, setLimitReached]   = useState(null) // { count, limit }
 
   useEffect(() => {
     if (!game) { navigate('/student/lobby'); return }
     async function load() {
       const act = await getActivity(student.classCode, gameId)
       if (!act?.enabled) { navigate('/student/lobby'); return }
+
+      // 일일 플레이 횟수 체크
+      const dailyLimit = act.dailyLimit ?? game.defaultDailyLimit ?? 5
+      const count      = await getTodayPlayCount(student.classCode, gameId, student.studentCode)
+      if (count >= dailyLimit) {
+        setActivity(act)
+        setLimitReached({ count, limit: dailyLimit })
+        return
+      }
+
       setActivity(act)
       if (act.activityPassword) setNeedPassword(true)
       else setPasswordOk(true)
@@ -36,17 +47,51 @@ export default function GameRunner() {
     setAwarding(true)
     try {
       const res = await awardPoints(student.classCode, student.studentCode, gameId)
-      setResult({ points: res.points ?? activity.pointsPerCompletion, message: res.message ?? '포인트가 지급됐어요!' })
-    } catch {
-      setResult({ points: activity?.pointsPerCompletion ?? 0, message: '포인트 지급 중 오류가 발생했습니다.' })
+      setResult({
+        points:  res.points  ?? activity.pointsPerCompletion,
+        message: res.message ?? '포인트가 지급됐어요!',
+      })
+    } catch (err) {
+      const code = err?.code || ''
+      if (code.includes('resource-exhausted')) {
+        setResult({ points: 0, message: '오늘 플레이 횟수를 모두 사용했어요! 내일 다시 도전하세요 🌙' })
+      } else {
+        setResult({ points: activity?.pointsPerCompletion ?? 0, message: '포인트 지급 중 오류가 발생했습니다.' })
+      }
     } finally {
       setAwarding(false)
     }
   }
 
+  // 로딩 중
   if (!game || !activity) {
     return (
       <div className="min-h-screen flex items-center justify-center text-4xl animate-bounce-slow">🎡</div>
+    )
+  }
+
+  // 일일 횟수 초과 화면
+  if (limitReached) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="card w-full max-w-sm text-center py-10 space-y-4">
+          <div className="text-5xl">🌙</div>
+          <h2 className="text-xl font-black text-carnival-navy">오늘은 끝!</h2>
+          <p className="text-carnival-navy/60 text-sm">
+            오늘 <strong>{game.name}</strong>을 이미<br />
+            <strong className="text-carnival-coral">{limitReached.count}번</strong> 플레이했어요.
+          </p>
+          <p className="text-carnival-navy/40 text-xs">
+            하루 최대 {limitReached.limit}번까지 플레이할 수 있어요.
+          </p>
+          <button
+            onClick={() => navigate('/student/lobby')}
+            className="btn-primary w-full"
+          >
+            로비로 돌아가기
+          </button>
+        </div>
+      </div>
     )
   }
 

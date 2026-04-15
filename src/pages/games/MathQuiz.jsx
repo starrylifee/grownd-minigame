@@ -1,73 +1,97 @@
 /**
- * ➗ 수학퀴즈
+ * ➗ 사칙연산 퀴즈 (유형별 난이도)
  *
  * [미니게임 인터페이스 규약]
  * props: { activityId, activity, onComplete, onExit }
  * - onComplete(result) 호출 시 플랫폼이 자동으로 포인트를 지급합니다.
  * - 이 컴포넌트에서 직접 포인트 지급 코드를 작성하지 마세요.
+ *
+ * [유형 구성]
+ * single-add       : 한 자리 덧셈 (1~9 + 1~9)
+ * double-add       : 두 자리 덧셈 - 받아올림 없음
+ * double-add-carry : 두 자리 덧셈 - 받아올림 있음
+ * single-mul       : 한 자리 곱셈 (2~9 × 2~9)
  */
 import { useState, useRef, useEffect } from 'react'
 
 const TOTAL = 10
 
-function generateQuestion() {
-  const ops = ['+', '-', '×', '÷']
-  const op = ops[Math.floor(Math.random() * ops.length)]
-  let a, b, answer
+const TYPE_INFO = {
+  'single-add':       { label: '한 자리 덧셈',            emoji: '➕', color: 'bg-green-100 text-green-700 border-green-300' },
+  'double-add':       { label: '두 자리 덧셈 (받아올림 없음)', emoji: '📐', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+  'double-add-carry': { label: '두 자리 덧셈 (받아올림 있음)', emoji: '🔢', color: 'bg-orange-100 text-orange-700 border-orange-300' },
+  'single-mul':       { label: '한 자리 곱셈',            emoji: '✖️', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+}
 
-  switch (op) {
-    case '+':
-      a = Math.floor(Math.random() * 50) + 1
-      b = Math.floor(Math.random() * 50) + 1
-      answer = a + b
-      break
-    case '-':
-      a = Math.floor(Math.random() * 50) + 10
-      b = Math.floor(Math.random() * a)
-      answer = a - b
-      break
-    case '×':
-      a = Math.floor(Math.random() * 9) + 2
-      b = Math.floor(Math.random() * 9) + 2
-      answer = a * b
-      break
-    case '÷':
-      b = Math.floor(Math.random() * 8) + 2
-      answer = Math.floor(Math.random() * 10) + 1
-      a = b * answer
-      break
+function generateQuestion(mathType) {
+  switch (mathType) {
+    case 'single-add': {
+      const a = Math.floor(Math.random() * 9) + 1
+      const b = Math.floor(Math.random() * 9) + 1
+      return { a, b, op: '+', answer: a + b }
+    }
+    case 'double-add': {
+      // 받아올림 없음: 일의 자리 합 < 10, 결과 두 자리
+      let a, b
+      do {
+        a = Math.floor(Math.random() * 40) + 10  // 10~49
+        b = Math.floor(Math.random() * 40) + 10  // 10~49
+      } while ((a % 10 + b % 10) >= 10)
+      return { a, b, op: '+', answer: a + b }
+    }
+    case 'double-add-carry': {
+      // 받아올림 있음: 일의 자리 합 >= 10
+      let a, b
+      do {
+        a = Math.floor(Math.random() * 79) + 11  // 11~89
+        b = Math.floor(Math.random() * 79) + 11  // 11~89
+      } while ((a % 10 + b % 10) < 10 || a + b > 199)
+      return { a, b, op: '+', answer: a + b }
+    }
+    case 'single-mul': {
+      const a = Math.floor(Math.random() * 8) + 2  // 2~9
+      const b = Math.floor(Math.random() * 8) + 2  // 2~9
+      return { a, b, op: '×', answer: a * b }
+    }
+    default: {
+      const a = Math.floor(Math.random() * 9) + 1
+      const b = Math.floor(Math.random() * 9) + 1
+      return { a, b, op: '+', answer: a + b }
+    }
   }
-  return { a, b, op, answer }
 }
 
-function makeQuestions() {
-  return Array.from({ length: TOTAL }, generateQuestion)
+function makeQuestions(mathType) {
+  return Array.from({ length: TOTAL }, () => generateQuestion(mathType))
 }
 
-export default function MathQuiz({ onComplete, onExit }) {
-  const [questions]         = useState(makeQuestions)
-  const [idx, setIdx]       = useState(0)
-  const [input, setInput]   = useState('')
+export default function MathQuiz({ activity, onComplete, onExit }) {
+  const mathType = activity?.mathType || 'single-add'
+  const info     = TYPE_INFO[mathType] || TYPE_INFO['single-add']
+
+  const [questions]           = useState(() => makeQuestions(mathType))
+  const [idx, setIdx]         = useState(0)
+  const [input, setInput]     = useState('')
   const [correct, setCorrect] = useState(null)
-  const [score, setScore]   = useState(0)
-  const inputRef            = useRef(null)
+  const [score, setScore]     = useState(0)
+  const inputRef              = useRef(null)
 
   useEffect(() => { inputRef.current?.focus() }, [idx])
 
-  const q = questions[idx]
+  const q        = questions[idx]
   const progress = (idx / TOTAL) * 100
 
   function handleSubmit(e) {
     e.preventDefault()
     const num = Number(input)
-    const ok = num === q.answer
+    const ok  = num === q.answer
     setCorrect(ok)
     if (ok) setScore(s => s + 1)
 
     setTimeout(() => {
       const next = idx + 1
       if (next >= TOTAL) {
-        onComplete({ score: ok ? score + 1 : score, passed: true })
+        onComplete({ score: ok ? score + 1 : score, passed: true, mathType })
       } else {
         setIdx(next)
         setInput('')
@@ -81,12 +105,18 @@ export default function MathQuiz({ onComplete, onExit }) {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* 헤더 */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-black text-carnival-navy">➗ 수학퀴즈</h1>
           <button onClick={onExit}
             className="text-sm text-carnival-navy/40 hover:text-carnival-coral transition-colors">
             나가기
           </button>
+        </div>
+
+        {/* 유형 배지 */}
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-bold mb-4 ${info.color}`}>
+          <span>{info.emoji}</span>
+          <span>{info.label}</span>
         </div>
 
         {/* 진행 바 */}

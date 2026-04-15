@@ -6,13 +6,28 @@ const fetch                  = require('node-fetch')
 initializeApp()
 const db = getFirestore()
 
-const GROWND_BASE = 'https://api.growndcard.com/api/v1'
+const GROWND_BASE = 'https://growndcard.com/api/v1'
+
+// 기본 일일 횟수 제한 (Firestore에 설정값 없을 때 fallback)
+const DEFAULT_DAILY_LIMIT = { 'raid-typing': 1 }
+const FALLBACK_LIMIT = 5
+
+/**
+ * KST(UTC+9) 기준 오늘 날짜를 YYYY-MM-DD 형식으로 반환합니다.
+ */
+function todayKST() {
+  const now = new Date()
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
+  return kst.toISOString().slice(0, 10)
+}
 
 /**
  * 학생에게 그라운드 포인트를 지급합니다.
  *
  * 클라이언트는 classCode, studentCode, gameId 만 전달하면 됩니다.
  * API 키는 이 Function 안에서만 읽히므로 클라이언트에 노출되지 않습니다.
+ *
+ * 일일 플레이 횟수 초과 시 'resource-exhausted' 오류를 반환합니다.
  */
 exports.awardPoints = onCall(
   { region: 'asia-northeast3' },
@@ -40,14 +55,43 @@ exports.awardPoints = onCall(
       throw new HttpsError('failed-precondition', '교사가 그라운드 API 키를 설정하지 않았습니다.')
     }
 
-    // 2. 활동 설정 조회 (지급 포인트)
+    // 2. 활동 설정 조회 (지급 포인트, 일일 횟수 제한)
     const actSnap = await db.collection('activities').doc(`${classCode}_${gameId}`).get()
     if (!actSnap.exists) {
       throw new HttpsError('not-found', '활동 설정을 찾을 수 없습니다.')
     }
-    const { pointsPerCompletion = 10, name = '미니게임' } = actSnap.data()
+    const actData = actSnap.data()
+    const { pointsPerCompletion = 10, name = '미니게임' } = actData
 
-    // 3. 그라운드 API 호출
+    const dailyLimit = actData.dailyLimit
+      ?? DEFAULT_DAILY_LIMIT[gameId]
+      ?? FALLBACK_LIMIT
+
+    // 3. 일일 플레이 횟수 체크 + 원자적 증가 (트랜잭션)
+    const today  = todayKST()
+    const logRef = db.collection('playLogs').doc(`${classCode}_${gameId}_${studentCode}_${today}`)
+
+    let playCount = 0
+    await db.runTransaction(async (t) => {
+      const logSnap = await t.get(logRef)
+      playCount = logSnap.exists ? (logSnap.data().count || 0) : 0
+      if (playCount < dailyLimit) {
+        t.set(
+          logRef,
+          { count: playCount + 1, classCode, gameId, studentCode, date: today },
+          { merge: true }
+        )
+      }
+    })
+
+    if (playCount >= dailyLimit) {
+      throw new HttpsError(
+        'resource-exhausted',
+        `오늘 이미 ${dailyLimit}번 플레이했습니다. 내일 다시 도전하세요!`
+      )
+    }
+
+    // 4. 그라운드 API 호출
     const url = `${GROWND_BASE}/classes/${growndClassId}/students/${studentCode}/points`
     const response = await fetch(url, {
       method:  'POST',

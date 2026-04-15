@@ -25,5 +25,18 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
+
+    // 일일 플레이 로그: 누구나 읽기 (클라이언트 사전 체크), 쓰기는 Cloud Function에서만
+    // 클라이언트 쓰기는 허용하되 Cloud Function 트랜잭션이 최종 권한자
+    match /playLogs/{logId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 레이드 보스: 누구나 읽기 (실시간 구독), 데미지 누적은 클라이언트에서 직접
+    match /raidBoss/{classCode} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }
