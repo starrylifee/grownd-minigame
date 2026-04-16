@@ -38,5 +38,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // 당일 리더보드: 누구나 읽기, 게임 완료 시 클라이언트에서 직접 쓰기
+    match /scoreLogs/{logId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

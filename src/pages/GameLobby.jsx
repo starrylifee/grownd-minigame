@@ -26,7 +26,11 @@ function LeaderboardPanel({ classCode }) {
       const result = {}
       await Promise.all(
         allGames.map(async g => {
-          result[g.id] = await getTodayLeaderboard(classCode, g.id)
+          try {
+            result[g.id] = await getTodayLeaderboard(classCode, g.id)
+          } catch {
+            result[g.id] = []
+          }
         })
       )
       setBoards(result)
