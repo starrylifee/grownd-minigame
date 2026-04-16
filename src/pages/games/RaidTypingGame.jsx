@@ -34,9 +34,11 @@ const RAID_SENTENCES = [
   '꾸준한 노력으로 강한 드래곤이 됩니다',
 ]
 
-const DAMAGE_PER_SENTENCE = 50
+const DAMAGE_BASE         = 50   // 기본 데미지
+const DAMAGE_MAX_BONUS    = 50   // 속도 보너스 최대치
+const BONUS_TIME_WINDOW   = 15   // 초 이내 입력 시 보너스
 const SESSION_SENTENCES   = 6
-const DRAGON_COUNT        = 5   // 화면에 표시할 드래곤 수
+const DRAGON_COUNT        = 5
 
 function shuffled(arr) {
   const a = [...arr]
@@ -136,7 +138,7 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
   const [sentences]               = useState(() => shuffled(sentencePool))
   const [idx, setIdx]             = useState(0)
   const [input, setInput]         = useState('')
-  const [correct, setCorrect]     = useState(null)
+  const [correct, setCorrect]     = useState(null)  // null | number(dmg) | false
   const [myDamage, setMyDamage]   = useState(0)
   const [done, setDone]           = useState(false)
 
@@ -147,9 +149,10 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
   const [damageNums, setDamageNums]   = useState([])     // [{ id, value }]
   const [hitFlash, setHitFlash]       = useState(false)
 
-  const inputRef    = useRef(null)
-  const prevDmgRef  = useRef(0)   // 다른 학생 공격 감지용
-  const uidRef      = useRef(0)
+  const inputRef         = useRef(null)
+  const prevDmgRef       = useRef(0)
+  const uidRef           = useRef(0)
+  const sentenceStartRef = useRef(Date.now())  // 문장별 타이머
 
   // 실시간 보스 HP 구독
   useEffect(() => {
@@ -164,7 +167,7 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
     if (!boss) return
     const dmg = boss.currentDamage || 0
     const delta = dmg - prevDmgRef.current
-    if (delta > 0 && delta < DAMAGE_PER_SENTENCE * 1.5) {
+    if (delta > 0 && delta < (DAMAGE_BASE + DAMAGE_MAX_BONUS) * 1.5) {
       // 내 공격이 아닌 경우만 (내 공격은 handleSubmit에서 처리)
       triggerAttack(Math.floor(Math.random() * DRAGON_COUNT))
     }
@@ -172,10 +175,13 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
   }, [boss?.currentDamage])
 
   useEffect(() => {
-    if (!done) inputRef.current?.focus()
+    if (!done) {
+      inputRef.current?.focus()
+      sentenceStartRef.current = Date.now()
+    }
   }, [idx, done])
 
-  function triggerAttack(slot) {
+  function triggerAttack(slot, dmg = DAMAGE_BASE) {
     setLaunchSlot(slot)
     setTimeout(() => setLaunchSlot(null), 800)
 
@@ -186,7 +192,7 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
       setHitFlash(true)
 
       const uid = ++uidRef.current
-      setDamageNums(prev => [...prev, { id: uid, value: DAMAGE_PER_SENTENCE }])
+      setDamageNums(prev => [...prev, { id: uid, value: dmg }])
       setTimeout(() => setDamageNums(prev => prev.filter(d => d.id !== uid)), 1000)
     }, 650)
 
@@ -210,21 +216,26 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
     if (done) return
     const trimmed = input.trim()
     if (trimmed === current) {
-      setCorrect(true)
-      const newMyDamage = myDamage + DAMAGE_PER_SENTENCE
-      setMyDamage(newMyDamage)
-      prevDmgRef.current += DAMAGE_PER_SENTENCE  // 내 공격은 중복 감지 방지
+      // 속도 보너스 계산
+      const elapsed    = (Date.now() - sentenceStartRef.current) / 1000
+      const bonus      = Math.max(0, Math.round(DAMAGE_MAX_BONUS * (1 - elapsed / BONUS_TIME_WINDOW)))
+      const dmg        = DAMAGE_BASE + bonus
 
-      contributeToRaid(student.classCode, student.studentCode, DAMAGE_PER_SENTENCE).catch(() => {})
+      setCorrect(dmg)  // 데미지 값을 correct에 저장해 피드백에 활용
+      const newMyDamage = myDamage + dmg
+      setMyDamage(newMyDamage)
+      prevDmgRef.current += dmg  // 내 공격은 중복 감지 방지
+
+      contributeToRaid(student.classCode, student.studentCode, dmg).catch(() => {})
 
       // 내 드래곤 공격 (idx % DRAGON_COUNT 슬롯)
-      triggerAttack(idx % DRAGON_COUNT)
+      triggerAttack(idx % DRAGON_COUNT, dmg)
 
       setTimeout(() => {
         const next = idx + 1
         if (next >= SESSION_SENTENCES) {
           setDone(true)
-          const totalDmg = (boss?.currentDamage || 0) + DAMAGE_PER_SENTENCE
+          const totalDmg = (boss?.currentDamage || 0) + dmg
           const defeated = totalDmg >= bossHp
           if (defeated) setBossAnim('boss-defeat')
           onComplete({ score: newMyDamage, passed: true, scoreRatio: defeated ? 1.5 : 1 })
@@ -244,8 +255,8 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
     }
   }
 
-  const borderColor = correct === true  ? 'border-carnival-green'
-                    : correct === false ? 'border-carnival-coral'
+  const borderColor = typeof correct === 'number' ? 'border-carnival-green'
+                    : correct === false            ? 'border-carnival-coral'
                     : 'border-slate-600'
 
   return (
@@ -415,11 +426,14 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
                 placeholder="여기에 입력하세요..."
                 className={`w-full px-4 py-3 rounded-2xl bg-slate-800 text-white placeholder-slate-500
                   font-medium text-base border-2 outline-none transition-all ${borderColor}`}
-                disabled={correct === true}
+                disabled={typeof correct === 'number'}
               />
-              {correct === true && (
-                <p className="text-center text-green-400 font-black text-lg animate-bounce">
-                  ⚔️ +{DAMAGE_PER_SENTENCE} 데미지!
+              {typeof correct === 'number' && (
+                <p className="text-center font-black text-lg animate-bounce">
+                  {correct > DAMAGE_BASE
+                    ? <span className="text-yellow-300">⚡ +{correct} 스피드 보너스!</span>
+                    : <span className="text-green-400">⚔️ +{correct} 데미지!</span>
+                  }
                 </p>
               )}
               {correct === false && (
