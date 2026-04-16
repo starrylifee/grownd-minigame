@@ -406,6 +406,7 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
                 ref={inputRef}
                 value={input}
                 onChange={e => { setInput(e.target.value); setCorrect(null) }}
+                onPaste={e => e.preventDefault()}
                 placeholder="여기에 입력하세요..."
                 className={`w-full px-4 py-3 rounded-2xl bg-slate-800 text-white placeholder-slate-500
                   font-medium text-base border-2 outline-none transition-all ${borderColor}`}

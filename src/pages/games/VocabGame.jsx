@@ -160,6 +160,7 @@ export default function VocabGame({ activity, onComplete, onExit }) {
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
+              onPaste={e => e.preventDefault()}
               type="text"
               placeholder="영어 단어를 입력하세요"
               autoComplete="off"

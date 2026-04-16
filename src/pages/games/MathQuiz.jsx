@@ -244,6 +244,7 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
+              onPaste={e => e.preventDefault()}
               type="number"
               placeholder="답 입력"
               className="input-field flex-1 text-2xl text-center font-bold"

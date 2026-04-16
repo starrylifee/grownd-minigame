@@ -150,6 +150,7 @@ export default function WordTypingGame({ activity, onComplete, onExit }) {
             ref={inputRef}
             value={input}
             onChange={handleChange}
+            onPaste={e => e.preventDefault()}
             placeholder="여기에 입력..."
             className={`input-field text-xl text-center mb-3 border-2 transition-all ${borderColor}`}
             disabled={correct === true}

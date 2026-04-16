@@ -163,6 +163,7 @@ export default function TypingGame({ activity, onComplete, onExit }) {
             ref={inputRef}
             value={input}
             onChange={handleChange}
+            onPaste={e => e.preventDefault()}
             placeholder="여기에 입력하세요..."
             className={`input-field text-lg mb-3 border-2 transition-all ${borderColor}`}
             disabled={correct === true}
