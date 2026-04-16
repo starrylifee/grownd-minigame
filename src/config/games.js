@@ -5,11 +5,12 @@
  * 각 항목의 id는 Firestore activities/{classCode}_{id} 문서 키로 사용됩니다.
  */
 
-import WordTypingGame from '../pages/games/WordTypingGame'
-import TypingGame     from '../pages/games/TypingGame'
-import MathQuiz       from '../pages/games/MathQuiz'
-import RaidTypingGame from '../pages/games/RaidTypingGame'
-import VocabGame      from '../pages/games/VocabGame'
+import WordTypingGame  from '../pages/games/WordTypingGame'
+import TypingGame      from '../pages/games/TypingGame'
+import MathQuiz        from '../pages/games/MathQuiz'
+import RaidTypingGame  from '../pages/games/RaidTypingGame'
+import VocabGame       from '../pages/games/VocabGame'
+import CountryQuizGame from '../pages/games/CountryQuizGame'
 
 export const GAMES = [
   {
@@ -53,6 +54,17 @@ export const GAMES = [
     duration:          '약 3분',
     color:             'bg-blue-400',
     component:         VocabGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'country-quiz',
+    name:              '나라 수도',
+    icon:              '🌍',
+    description:       '세계 나라의 수도를 맞혀보세요! 국기를 보고 수도 이름을 입력하세요.',
+    duration:          '약 3분',
+    color:             'bg-emerald-400',
+    component:         CountryQuizGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },
