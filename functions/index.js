@@ -7,7 +7,7 @@ const fetch                  = require('node-fetch')
 initializeApp()
 const db = getFirestore()
 
-const GROWND_BASE = 'https://growndcard.com/api/v1'
+const GROWND_BASE = 'https://growndcard.com/api/v1' // node22
 
 const DEFAULT_DAILY_LIMIT = { 'raid-typing': 1 }
 const FALLBACK_LIMIT = 5
