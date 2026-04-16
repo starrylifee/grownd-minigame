@@ -142,3 +142,31 @@ export function subscribeToRaidBoss(classCode, callback) {
     callback(snap.exists() ? snap.data() : null)
   })
 }
+
+// ── 당일 리더보드 ────────────────────────────────────────────
+function scoreLogId(classCode, gameId) {
+  return `${classCode}_${gameId}_${todayKST()}`
+}
+
+/**
+ * 게임 결과를 오늘의 리더보드에 저장합니다.
+ */
+export async function saveGameScore(classCode, gameId, studentCode, studentName, scoreRatio, points) {
+  await setDoc(
+    doc(db, 'scoreLogs', scoreLogId(classCode, gameId)),
+    { [studentCode]: { name: studentName, scoreRatio, points, ts: Date.now() } },
+    { merge: true }
+  )
+}
+
+/**
+ * 오늘의 리더보드를 가져옵니다.
+ * @returns {{ studentCode: string, name: string, scoreRatio: number, points: number }[]}
+ */
+export async function getTodayLeaderboard(classCode, gameId) {
+  const snap = await getDoc(doc(db, 'scoreLogs', scoreLogId(classCode, gameId)))
+  if (!snap.exists()) return []
+  return Object.entries(snap.data())
+    .map(([code, v]) => ({ studentCode: code, ...v }))
+    .sort((a, b) => b.scoreRatio - a.scoreRatio)
+}

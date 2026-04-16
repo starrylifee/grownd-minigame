@@ -9,6 +9,7 @@ import WordTypingGame from '../pages/games/WordTypingGame'
 import TypingGame     from '../pages/games/TypingGame'
 import MathQuiz       from '../pages/games/MathQuiz'
 import RaidTypingGame from '../pages/games/RaidTypingGame'
+import VocabGame      from '../pages/games/VocabGame'
 
 export const GAMES = [
   {
@@ -41,6 +42,17 @@ export const GAMES = [
     duration:          '약 3분',
     color:             'bg-carnival-purple',
     component:         MathQuiz,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'vocab',
+    name:              '영어 단어',
+    icon:              '🔤',
+    description:       '선생님이 설정한 Unit의 단어 10개! 한글 뜻을 보고 영어로 타이핑하세요.',
+    duration:          '약 3분',
+    color:             'bg-blue-400',
+    component:         VocabGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },

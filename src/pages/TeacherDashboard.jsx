@@ -9,6 +9,8 @@ import {
   getRaidBoss, resetRaidBoss,
 } from '../lib/firestore'
 import { GAMES } from '../config/games'
+import { VOCAB_UNIT_NAMES } from '../data/vocabData'
+import { BOSS_PRESETS } from '../data/bossPresets'
 
 const TABS = ['학급 설정', '학생 관리', '게임 관리']
 
@@ -37,6 +39,7 @@ function defaultSettingsFor(game) {
   if (game.id === 'word-typing') return { ...base, typingLevel: 1 }
   if (game.id === 'typing')      return { ...base, typingLevel: 1 }
   if (game.id === 'math-quiz')   return { ...base, mathType: 'single-add' }
+  if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
   if (game.id === 'raid-typing') return {
     ...base,
     dailyLimit:  1,
@@ -461,6 +464,31 @@ export default function TeacherDashboard() {
                   </div>
                 )}
 
+                {/* ── 영어 단어 전용 설정 ── */}
+                {game.id === 'vocab' && s.enabled && (
+                  <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
+                    <p className="font-bold text-sm">📚 단어 Unit 선택</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {VOCAB_UNIT_NAMES.map(unit => (
+                        <label key={unit}
+                          className={`flex items-center justify-center px-2 py-2 rounded-xl cursor-pointer border text-xs font-bold transition-all ${
+                            s.vocabUnit === unit
+                              ? 'border-blue-400 bg-blue-100 text-blue-700'
+                              : 'border-gray-100 bg-white text-carnival-navy/60'}`}>
+                          <input
+                            type="radio"
+                            name="vocabUnit"
+                            checked={s.vocabUnit === unit}
+                            onChange={() => updateGameSetting('vocab', 'vocabUnit', unit)}
+                            className="sr-only"
+                          />
+                          {unit}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* ── 사칙연산 전용 설정 ── */}
                 {game.id === 'math-quiz' && s.enabled && (
                   <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
@@ -523,22 +551,55 @@ export default function TeacherDashboard() {
                       </div>
                     )}
 
-                    {/* 보스 설정 폼 */}
-                    <div className="space-y-2">
-                      <div>
-                        <label className="block text-xs font-bold text-carnival-navy/50 mb-1">보스 총 HP (학급 전체 목표)</label>
-                        <input
-                          type="number" min="100" step="100"
-                          value={s.bossHp || 1000}
-                          onChange={e => updateGameSetting('raid-typing', 'bossHp', Number(e.target.value))}
-                          className="input-field text-sm py-2"
-                        />
-                        <p className="text-xs text-carnival-navy/40 mt-0.5">
-                          학생 1명이 최대 {6 * 50}P 데미지 가능 (6문장 × 50)
-                        </p>
-                      </div>
+                    {/* 보스 HP 설정 */}
+                    <div>
+                      <label className="block text-xs font-bold text-carnival-navy/50 mb-1">보스 총 HP (학급 전체 목표)</label>
+                      <input
+                        type="number" min="100" step="100"
+                        value={s.bossHp || 1000}
+                        onChange={e => updateGameSetting('raid-typing', 'bossHp', Number(e.target.value))}
+                        className="input-field text-sm py-2"
+                      />
+                      <p className="text-xs text-carnival-navy/40 mt-0.5">
+                        학생 1명이 최대 {6 * 50}P 데미지 가능 (6문장 × 50)
+                      </p>
+                    </div>
 
-                      <p className="text-xs font-bold text-carnival-navy/60 pt-1">커스텀 보스 (비워두면 날짜 자동 감지)</p>
+                    {/* 보스 프리셋 선택 */}
+                    <div>
+                      <p className="text-xs font-bold text-carnival-navy/60 mb-2">🎭 보스 테마 선택</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {BOSS_PRESETS.map(preset => {
+                          const selected = s.bossEmoji === preset.emoji && s.bossName === preset.name
+                          return (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              onClick={() => {
+                                updateGameSetting('raid-typing', 'bossEmoji',    preset.emoji)
+                                updateGameSetting('raid-typing', 'bossName',     preset.name)
+                                updateGameSetting('raid-typing', 'bossStory',    preset.story)
+                                updateGameSetting('raid-typing', 'bossGradient', preset.gradient)
+                              }}
+                              className={`flex flex-col items-center py-2 px-1 rounded-xl border-2 transition-all ${
+                                selected
+                                  ? 'border-carnival-coral bg-carnival-coral/10'
+                                  : 'border-gray-100 bg-white hover:border-carnival-sky'
+                              }`}
+                            >
+                              <span style={{ fontSize: '1.6rem' }}>{preset.emoji}</span>
+                              <span className="text-xs font-bold text-carnival-navy/70 mt-0.5 leading-tight text-center">
+                                {preset.label}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 커스텀 직접 입력 */}
+                    <div>
+                      <p className="text-xs font-bold text-carnival-navy/60 mb-2">✏️ 직접 입력 (선택 후 수정 가능)</p>
                       <div className="grid grid-cols-4 gap-2">
                         <input
                           value={s.bossEmoji || ''}
@@ -556,8 +617,8 @@ export default function TeacherDashboard() {
                       <input
                         value={s.bossStory || ''}
                         onChange={e => updateGameSetting('raid-typing', 'bossStory', e.target.value)}
-                        placeholder="배경 스토리 (예: 독도를 지켜요!)"
-                        className="input-field text-sm py-2"
+                        placeholder="배경 스토리"
+                        className="input-field text-sm py-2 mt-2"
                       />
                     </div>
 

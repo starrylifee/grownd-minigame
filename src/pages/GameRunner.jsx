@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect }    from 'react'
 import { useAuth }                from '../context/AuthContext'
-import { getActivity, getTodayPlayCount } from '../lib/firestore'
+import { getActivity, getTodayPlayCount, saveGameScore } from '../lib/firestore'
 import { awardPoints }            from '../lib/growndApi'
 import { getGame }                from '../config/games'
 import ActivityPasswordModal      from '../components/ActivityPasswordModal'
@@ -65,8 +65,16 @@ export default function GameRunner() {
         gameId,
         gameResult?.scoreRatio,
       )
+      const finalPoints = res.points ?? activity.pointsPerCompletion
+      // 리더보드 저장 (실패해도 무시)
+      saveGameScore(
+        student.classCode, gameId,
+        student.studentCode, student.name,
+        gameResult?.scoreRatio ?? 1,
+        finalPoints,
+      ).catch(() => {})
       setResult({
-        points:  res.points  ?? activity.pointsPerCompletion,
+        points:  finalPoints,
         message: res.message ?? '포인트가 지급됐어요!',
       })
     } catch (err) {

@@ -83,8 +83,8 @@ exports.awardPoints = onCall(
       }
     }
 
-    // 5. scoreRatio 비례 포인트 계산
-    const finalPoints = (typeof scoreRatio === 'number' && scoreRatio >= 0 && scoreRatio <= 1)
+    // 5. scoreRatio 비례 포인트 계산 (최대 2배까지 허용 — 레이드 격파 보너스 등)
+    const finalPoints = (typeof scoreRatio === 'number' && scoreRatio >= 0 && scoreRatio <= 2)
       ? Math.round(pointsPerCompletion * scoreRatio)
       : pointsPerCompletion
 
