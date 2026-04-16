@@ -17,8 +17,14 @@ function formatScore(gameId, scoreRatio, completionTime) {
     if (scoreRatio >= 1.5) return '🏆 격파 보너스!'
     return '⚔️ 참여'
   }
+  if (gameId === 'math-quiz') {
+    // 사칙연산은 정답 수 / 10 표시 + 시간
+    const correct = Math.round(scoreRatio * 10)
+    const time    = completionTime ? ` · ${formatTime(completionTime)}` : ''
+    return `${correct}/10${time}`
+  }
   const pct  = `${Math.round(scoreRatio * 100)}%`
-  const time = TIMED_GAMES.includes(gameId) && completionTime ? ` · ${formatTime(completionTime)}` : ''
+  const time = completionTime ? ` · ${formatTime(completionTime)}` : ''
   return pct + time
 }
 

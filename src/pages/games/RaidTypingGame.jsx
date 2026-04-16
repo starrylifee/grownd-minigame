@@ -127,8 +127,13 @@ export default function RaidTypingGame({ activity, onComplete, onExit }) {
   const totalHp       = activity?.bossHp || 1000
   const arenaGradient = activity?.bossGradient || 'linear-gradient(160deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%)'
 
+  // 커스텀 문장 파싱 (6개 미만이면 기본 풀로 fallback)
+  const customLines = (activity?.customSentences || '')
+    .split('\n').map(s => s.trim()).filter(Boolean)
+  const sentencePool = customLines.length >= 6 ? customLines : RAID_SENTENCES
+
   const [boss, setBoss]           = useState(null)
-  const [sentences]               = useState(() => shuffled(RAID_SENTENCES))
+  const [sentences]               = useState(() => shuffled(sentencePool))
   const [idx, setIdx]             = useState(0)
   const [input, setInput]         = useState('')
   const [correct, setCorrect]     = useState(null)

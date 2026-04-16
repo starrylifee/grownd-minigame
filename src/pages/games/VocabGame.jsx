@@ -1,17 +1,9 @@
 /**
  * 🔤 영어 단어 게임 (Bricks Vocabulary 300)
  *
- * [미니게임 인터페이스 규약]
- * props: { activityId, activity, onComplete, onExit }
- *
  * [게임 방식]
- * - 교사가 설정한 Unit의 단어 중 10개를 무작위 출제
- * - 한글 뜻이 보이면 영어 단어를 타이핑
- * - 대소문자 무시, 앞뒤 공백 무시
- *
- * [점수 방식]
- * - 정답 비례 지급: 최종 포인트 = 설정 포인트 × (정답 수 / 문제 수)
- * - 오타 횟수에 따른 감점: submit 시 틀릴수록 scoreRatio 감소
+ * - 10개 출제 → 오타 횟수 비례 감점 → 점수 확정
+ * - 오타가 있었던 단어는 복습 라운드에서 다시 출제 (점수에 영향 없음)
  */
 import { useState, useRef, useEffect } from 'react'
 import { VOCAB_UNITS } from '../../data/vocabData'
@@ -26,62 +18,114 @@ function pickWords(unit) {
 
 export default function VocabGame({ activity, onComplete, onExit }) {
   const unit = activity?.vocabUnit || 'UNIT 01'
-  const [words]              = useState(() => pickWords(unit))
-  const [idx, setIdx]        = useState(0)
-  const [input, setInput]    = useState('')
-  const [feedback, setFeedback] = useState(null)  // null | 'correct' | 'wrong'
-  const [score, setScore]    = useState(0)
-  const [wrongCount, setWrongCount] = useState(0)  // 현재 문제 오타 횟수
-  const inputRef             = useRef(null)
-  const startTimeRef         = useRef(Date.now())
+  const [words]    = useState(() => pickWords(unit))
 
-  // 새 문제로 넘어갈 때 포커스
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [idx])
+  // 메인 게임
+  const [idx, setIdx]              = useState(0)
+  const [input, setInput]          = useState('')
+  const [feedback, setFeedback]    = useState(null)   // null | 'correct' | 'wrong'
+  const [score, setScore]          = useState(0)
+  const [wrongCount, setWrongCount]= useState(0)
 
-  const w        = words[idx]
-  const progress = (idx / TOTAL) * 100
+  // 복습 라운드
+  const [isReview, setIsReview]    = useState(false)
+  const [reviewWords, setReviewWords] = useState([])  // 오타 있었던 단어들
+  const [reviewIdx, setReviewIdx]  = useState(0)
+  const [reviewDone, setReviewDone]= useState(false)
+
+  // 최종 결과 (복습 중 onComplete 지연을 위해 저장)
+  const pendingResult = useRef(null)
+
+  const inputRef     = useRef(null)
+  const startTimeRef = useRef(Date.now())
+
+  useEffect(() => { inputRef.current?.focus() }, [idx, reviewIdx, isReview])
+
+  const currentWord = isReview ? reviewWords[reviewIdx] : words[idx]
+  const progress    = isReview
+    ? ((reviewIdx) / reviewWords.length) * 100
+    : (idx / words.length) * 100
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (feedback !== null) return
+    if (feedback !== null || !currentWord) return
 
-    const answer   = w.english.toLowerCase().trim()
-    const userAns  = input.toLowerCase().trim()
+    const answer  = currentWord.english.toLowerCase().trim()
+    const userAns = input.toLowerCase().trim()
 
     if (userAns === answer) {
-      // 정답: 오타 횟수에 따라 점수 감산 (0회=1점, 1회=0.8, 2회=0.6, 3+회=0.4)
-      const partial = Math.max(0.4, 1 - wrongCount * 0.2)
-      setScore(s => s + partial)
       setFeedback('correct')
 
-      setTimeout(() => {
-        const next = idx + 1
-        if (next >= words.length) {
-          const finalScore    = score + partial
-          const scoreRatio    = finalScore / words.length
-          onComplete({ score: Math.round(finalScore), scoreRatio, completionTime: Math.round((Date.now() - startTimeRef.current) / 1000), passed: true, vocabUnit: unit })
-        } else {
-          setIdx(next)
-          setInput('')
-          setFeedback(null)
-          setWrongCount(0)
+      if (isReview) {
+        // 복습 정답
+        setTimeout(() => {
+          const next = reviewIdx + 1
+          if (next >= reviewWords.length) {
+            setReviewDone(true)
+            setTimeout(() => onComplete(pendingResult.current), 1200)
+          } else {
+            setReviewIdx(next)
+            setInput('')
+            setFeedback(null)
+          }
+        }, 600)
+      } else {
+        // 메인 정답
+        const partial   = Math.max(0.4, 1 - wrongCount * 0.2)
+        const newScore  = score + partial
+        setScore(newScore)
+
+        // 오타가 있었던 단어 복습 큐에 추가
+        if (wrongCount > 0) {
+          setReviewWords(prev => [...prev, currentWord])
         }
-      }, 700)
+
+        setTimeout(() => {
+          const next = idx + 1
+          if (next >= words.length) {
+            // 메인 게임 종료 — 점수 확정
+            const scoreRatio     = newScore / words.length
+            const completionTime = Math.round((Date.now() - startTimeRef.current) / 1000)
+            pendingResult.current = {
+              score: Math.round(newScore), scoreRatio, completionTime, passed: true, vocabUnit: unit,
+            }
+            // 복습할 단어가 있으면 복습 모드 진입, 없으면 바로 완료
+            if (wrongCount > 0) {  // reviewWords에 방금 추가 예정인 단어 포함
+              setIsReview(true)
+              setReviewIdx(0)
+              setInput('')
+              setFeedback(null)
+              setWrongCount(0)
+            } else {
+              onComplete(pendingResult.current)
+            }
+          } else {
+            setIdx(next)
+            setInput('')
+            setFeedback(null)
+            setWrongCount(0)
+          }
+        }, 600)
+      }
     } else {
-      // 오답: 오타 횟수 증가, 입력 초기화
+      // 오답
       setWrongCount(c => c + 1)
       setFeedback('wrong')
       setTimeout(() => {
         setInput('')
         setFeedback(null)
         inputRef.current?.focus()
-      }, 700)
+      }, 600)
     }
   }
 
-  // 단어가 없는 경우 (unit에 단어 없음)
+  // 복습 단어가 없는데 isReview가 됐을 때 방어
+  useEffect(() => {
+    if (isReview && reviewWords.length === 0 && pendingResult.current) {
+      onComplete(pendingResult.current)
+    }
+  }, [isReview, reviewWords])
+
   if (!words.length) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
@@ -97,6 +141,7 @@ export default function VocabGame({ activity, onComplete, onExit }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
+
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-black text-carnival-navy">🔤 영어 단어</h1>
@@ -106,80 +151,108 @@ export default function VocabGame({ activity, onComplete, onExit }) {
           </button>
         </div>
 
-        {/* 유닛 배지 */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-blue-300 bg-blue-50 text-blue-700 text-sm font-bold mb-4">
-          <span>📚</span>
-          <span>{unit}</span>
+        {/* 배지 */}
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-blue-300 bg-blue-50 text-blue-700 text-sm font-bold">
+            <span>📚</span><span>{unit}</span>
+          </div>
+          {isReview && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-300 bg-amber-50 text-amber-700 text-sm font-bold animate-pulse">
+              <span>🔁</span><span>복습 라운드</span>
+            </div>
+          )}
         </div>
 
-        {/* 진행 바 + 점수 */}
+        {/* 진행 바 */}
         <div className="mb-4">
           <div className="flex justify-between text-sm font-bold text-carnival-navy/50 mb-1">
-            <span>진행도 {idx} / {words.length}</span>
-            <span>정답 {Math.round(score)}점</span>
+            {isReview
+              ? <span>복습 {reviewIdx} / {reviewWords.length}</span>
+              : <span>진행도 {idx} / {words.length}</span>
+            }
+            {!isReview && <span>점수 {Math.round(score * 10) / 10}점</span>}
           </div>
           <div className="w-full bg-gray-100 rounded-full h-3">
             <div
-              className="h-3 rounded-full bg-blue-400 transition-all duration-500"
+              className={`h-3 rounded-full transition-all duration-500 ${isReview ? 'bg-amber-400' : 'bg-blue-400'}`}
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
-        {/* 문제 카드 */}
-        <div className={`card text-center mb-5 py-10 transition-colors ${
-          feedback === 'correct' ? 'bg-green-50 border-green-300' :
-          feedback === 'wrong'   ? 'bg-red-50 border-red-300' : ''
-        }`}>
-          <p className="text-xs text-carnival-navy/40 mb-3 font-medium">{idx + 1}번 단어</p>
-          <p className="text-4xl font-black text-carnival-navy mb-2">{w.korean}</p>
-          {wrongCount > 0 && feedback === null && (
-            <p className="text-xs text-amber-500 mt-2">
-              힌트: <span className="font-mono tracking-widest">{w.english.split('').map((c, i) => i === 0 ? c : '_').join(' ')}</span>
-              {wrongCount >= 2 && <span className="ml-1">({w.english.slice(0, 2)}...)</span>}
-            </p>
-          )}
-        </div>
-
-        {/* 피드백 */}
-        {feedback === 'correct' && (
-          <div className="text-center text-carnival-green font-black text-2xl mb-4 animate-bounce">
-            🎯 정답!
+        {/* 복습 완료 화면 */}
+        {reviewDone ? (
+          <div className="card text-center py-10 space-y-3">
+            <div className="text-5xl">🎉</div>
+            <p className="font-black text-xl text-carnival-navy">복습 완료!</p>
+            <p className="text-carnival-navy/50 text-sm">틀렸던 단어를 모두 맞혔어요</p>
           </div>
-        )}
-        {feedback === 'wrong' && (
-          <div className="text-center mb-4">
-            <p className="text-carnival-coral font-black text-xl">❌ 다시 시도!</p>
-            <p className="text-carnival-navy/50 text-sm mt-1">스펠링을 확인해보세요</p>
-          </div>
-        )}
+        ) : (
+          <>
+            {/* 문제 카드 */}
+            <div className={`card text-center mb-5 py-10 transition-colors ${
+              feedback === 'correct' ? 'bg-green-50 border-green-300' :
+              feedback === 'wrong'   ? 'bg-red-50 border-red-300' : ''
+            }`}>
+              <p className="text-xs text-carnival-navy/40 mb-3 font-medium">
+                {isReview ? '복습' : `${idx + 1}번`} 단어
+              </p>
+              <p className="text-4xl font-black text-carnival-navy mb-2">{currentWord?.korean}</p>
+              {/* 힌트: 메인 게임 오타 1회+, 복습 오타 2회+ */}
+              {!isReview && wrongCount > 0 && feedback === null && (
+                <p className="text-xs text-amber-500 mt-2">
+                  힌트: <span className="font-mono tracking-widest">
+                    {currentWord.english.split('').map((c, i) => i === 0 ? c : '_').join(' ')}
+                  </span>
+                  {wrongCount >= 2 && <span className="ml-1">({currentWord.english.slice(0, 2)}...)</span>}
+                </p>
+              )}
+              {isReview && wrongCount >= 2 && feedback === null && (
+                <p className="text-xs text-amber-500 mt-2">
+                  힌트: <span className="font-mono">({currentWord.english.slice(0, 2)}...)</span>
+                </p>
+              )}
+            </div>
 
-        {/* 입력 */}
-        {feedback === null && (
-          <form onSubmit={handleSubmit} className="flex gap-3">
-            <input
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onPaste={e => e.preventDefault()}
-              type="text"
-              placeholder="영어 단어를 입력하세요"
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck="false"
-              className="input-field flex-1 text-xl text-center font-bold font-mono"
-            />
-            <button type="submit" className="btn-secondary px-6 text-xl">
-              →
-            </button>
-          </form>
-        )}
+            {/* 피드백 */}
+            {feedback === 'correct' && (
+              <div className="text-center text-carnival-green font-black text-2xl mb-4 animate-bounce">
+                🎯 정답!
+              </div>
+            )}
+            {feedback === 'wrong' && (
+              <div className="text-center mb-4">
+                <p className="text-carnival-coral font-black text-xl">❌ 다시 시도!</p>
+                <p className="text-carnival-navy/50 text-sm mt-1">스펠링을 확인해보세요</p>
+              </div>
+            )}
 
-        {/* 점수 예상 안내 */}
-        {feedback === null && idx > 0 && (
-          <p className="text-center text-xs text-carnival-navy/30 mt-3">
-            현재 {Math.round(score)}/{idx}점 → 예상 포인트 {Math.round((activity?.pointsPerCompletion || 10) * score / words.length)}P
-          </p>
+            {/* 입력 */}
+            {feedback === null && (
+              <form onSubmit={handleSubmit} className="flex gap-3">
+                <input
+                  ref={inputRef}
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onPaste={e => e.preventDefault()}
+                  type="text"
+                  placeholder="영어 단어를 입력하세요"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  className="input-field flex-1 text-xl text-center font-bold font-mono"
+                />
+                <button type="submit" className="btn-secondary px-6 text-xl">→</button>
+              </form>
+            )}
+
+            {/* 예상 포인트 (메인 게임만) */}
+            {!isReview && feedback === null && idx > 0 && (
+              <p className="text-center text-xs text-carnival-navy/30 mt-3">
+                현재 {Math.round(score * 10) / 10}/{idx}점 → 예상 포인트 {Math.round((activity?.pointsPerCompletion || 10) * score / words.length)}P
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>

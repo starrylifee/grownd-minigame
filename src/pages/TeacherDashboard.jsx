@@ -42,11 +42,12 @@ function defaultSettingsFor(game) {
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
   if (game.id === 'raid-typing') return {
     ...base,
-    dailyLimit:  1,
-    bossHp:      1000,
-    bossName:    '',
-    bossEmoji:   '',
-    bossStory:   '',
+    dailyLimit:     1,
+    bossHp:         1000,
+    bossName:       '',
+    bossEmoji:      '',
+    bossStory:      '',
+    customSentences: '',
   }
   return base
 }
@@ -620,6 +621,28 @@ export default function TeacherDashboard() {
                         placeholder="배경 스토리"
                         className="input-field text-sm py-2 mt-2"
                       />
+                    </div>
+
+                    {/* 커스텀 문장 */}
+                    <div>
+                      <p className="text-xs font-bold text-carnival-navy/60 mb-1">
+                        ✏️ 커스텀 문장 (비워두면 기본 8문장 사용)
+                      </p>
+                      <textarea
+                        value={s.customSentences || ''}
+                        onChange={e => updateGameSetting('raid-typing', 'customSentences', e.target.value)}
+                        placeholder={`한 줄에 하나씩 입력하세요\n예: 우리 반은 최고입니다\n예: 함께하면 무엇이든 가능해요`}
+                        className="input-field text-sm font-mono min-h-[120px] resize-y"
+                        rows={5}
+                      />
+                      {(() => {
+                        const lines = (s.customSentences || '').split('\n').filter(l => l.trim())
+                        return lines.length > 0 && lines.length < 6
+                          ? <p className="text-xs text-red-400 mt-1">⚠️ 최소 6문장 필요 (현재 {lines.length}개)</p>
+                          : lines.length >= 6
+                          ? <p className="text-xs text-green-600 mt-1">✅ {lines.length}개 문장 등록됨</p>
+                          : null
+                      })()}
                     </div>
 
                     <button

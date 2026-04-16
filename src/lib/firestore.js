@@ -152,13 +152,22 @@ function scoreLogId(classCode, gameId) {
  * 게임 결과를 오늘의 리더보드에 저장합니다.
  */
 export async function saveGameScore(classCode, gameId, studentCode, studentName, scoreRatio, points, completionTime) {
+  const ref  = doc(db, 'scoreLogs', scoreLogId(classCode, gameId))
+  const snap = await getDoc(ref)
+
+  // 기존 기록이 더 좋으면 덮어쓰지 않음
+  if (snap.exists()) {
+    const prev = snap.data()[studentCode]
+    if (prev) {
+      const prevBetter = prev.scoreRatio > scoreRatio ||
+        (prev.scoreRatio === scoreRatio && (prev.completionTime ?? 99999) <= (completionTime ?? 99999))
+      if (prevBetter) return
+    }
+  }
+
   const entry = { name: studentName, scoreRatio, points, ts: Date.now() }
   if (completionTime != null) entry.completionTime = completionTime
-  await setDoc(
-    doc(db, 'scoreLogs', scoreLogId(classCode, gameId)),
-    { [studentCode]: entry },
-    { merge: true }
-  )
+  await setDoc(ref, { [studentCode]: entry }, { merge: true })
 }
 
 /**
