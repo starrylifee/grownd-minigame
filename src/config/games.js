@@ -48,7 +48,7 @@ export const GAMES = [
   {
     id:                'vocab',
     name:              '영어 단어',
-    icon:              '🔤',
+    icon:              '🇬🇧',
     description:       '선생님이 설정한 Unit의 단어 10개! 한글 뜻을 보고 영어로 타이핑하세요.',
     duration:          '약 3분',
     color:             'bg-blue-400',
