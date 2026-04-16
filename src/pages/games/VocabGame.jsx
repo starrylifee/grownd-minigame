@@ -33,6 +33,7 @@ export default function VocabGame({ activity, onComplete, onExit }) {
   const [score, setScore]    = useState(0)
   const [wrongCount, setWrongCount] = useState(0)  // 현재 문제 오타 횟수
   const inputRef             = useRef(null)
+  const startTimeRef         = useRef(Date.now())
 
   // 새 문제로 넘어갈 때 포커스
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function VocabGame({ activity, onComplete, onExit }) {
         if (next >= words.length) {
           const finalScore    = score + partial
           const scoreRatio    = finalScore / words.length
-          onComplete({ score: Math.round(finalScore), scoreRatio, passed: true, vocabUnit: unit })
+          onComplete({ score: Math.round(finalScore), scoreRatio, completionTime: Math.round((Date.now() - startTimeRef.current) / 1000), passed: true, vocabUnit: unit })
         } else {
           setIdx(next)
           setInput('')

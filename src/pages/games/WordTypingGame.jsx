@@ -51,6 +51,7 @@ export default function WordTypingGame({ activity, onComplete, onExit }) {
   const [done, setDone]       = useState(0)
   const [correct, setCorrect] = useState(null)  // null | true | false
   const inputRef              = useRef(null)
+  const startTimeRef          = useRef(Date.now())
 
   useEffect(() => { inputRef.current?.focus() }, [idx])
 
@@ -72,7 +73,8 @@ export default function WordTypingGame({ activity, onComplete, onExit }) {
       setDone(newDone)
       setTimeout(() => {
         if (next >= SESSION_COUNT) {
-          onComplete({ score: newDone, passed: true, level })
+          const completionTime = Math.round((Date.now() - startTimeRef.current) / 1000)
+          onComplete({ score: newDone, scoreRatio: newDone / SESSION_COUNT, completionTime, passed: true, level })
         } else {
           setIdx(next)
           setInput('')

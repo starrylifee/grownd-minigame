@@ -151,10 +151,12 @@ function scoreLogId(classCode, gameId) {
 /**
  * 게임 결과를 오늘의 리더보드에 저장합니다.
  */
-export async function saveGameScore(classCode, gameId, studentCode, studentName, scoreRatio, points) {
+export async function saveGameScore(classCode, gameId, studentCode, studentName, scoreRatio, points, completionTime) {
+  const entry = { name: studentName, scoreRatio, points, ts: Date.now() }
+  if (completionTime != null) entry.completionTime = completionTime
   await setDoc(
     doc(db, 'scoreLogs', scoreLogId(classCode, gameId)),
-    { [studentCode]: { name: studentName, scoreRatio, points, ts: Date.now() } },
+    { [studentCode]: entry },
     { merge: true }
   )
 }
@@ -168,5 +170,9 @@ export async function getTodayLeaderboard(classCode, gameId) {
   if (!snap.exists()) return []
   return Object.entries(snap.data())
     .map(([code, v]) => ({ studentCode: code, ...v }))
-    .sort((a, b) => b.scoreRatio - a.scoreRatio)
+    .sort((a, b) => {
+      if (b.scoreRatio !== a.scoreRatio) return b.scoreRatio - a.scoreRatio
+      // 정확도 동점이면 빠른 시간 순
+      return (a.completionTime ?? 99999) - (b.completionTime ?? 99999)
+    })
 }

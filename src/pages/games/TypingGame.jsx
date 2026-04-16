@@ -84,8 +84,8 @@ export default function TypingGame({ activity, onComplete, onExit }) {
       setDone(newDone)
       setTimeout(() => {
         if (next >= sentences.length) {
-          const elapsed = Math.round((Date.now() - startTime) / 1000)
-          onComplete({ score: elapsed, passed: true, level })
+          const completionTime = Math.round((Date.now() - startTime) / 1000)
+          onComplete({ score: newDone, scoreRatio: newDone / sentences.length, completionTime, passed: true, level })
         } else {
           setIdx(next)
           setInput('')

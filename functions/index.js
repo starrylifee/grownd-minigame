@@ -1,4 +1,5 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
+const { onSchedule }         = require('firebase-functions/v2/scheduler')
 const { initializeApp }      = require('firebase-admin/app')
 const { getFirestore }       = require('firebase-admin/firestore')
 const fetch                  = require('node-fetch')
@@ -116,6 +117,96 @@ exports.awardPoints = onCall(
       points:  finalPoints,
       message: `${name} 완료! ${finalPoints}P가 지급됐어요 🌱`,
       grownd:  data,
+    }
+  }
+)
+
+// ── 오늘의 순위 TOP3 보너스 — 매일 23:55 KST ──────────────────
+const BONUS_GAME_ORDER = ['word-typing', 'typing', 'math-quiz', 'vocab']
+const BONUS_POINTS     = 1
+const BONUS_TOP_N      = 3
+
+async function awardBonusPoint(apiKey, growndClassId, studentCode, gameId) {
+  const url = `${GROWND_BASE}/classes/${growndClassId}/students/${studentCode}/points`
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+    body: JSON.stringify({
+      type:        'reward',
+      points:      BONUS_POINTS,
+      description: `오늘의 순위 TOP${BONUS_TOP_N} 보너스`,
+    }),
+  })
+  if (!res.ok) throw new Error(`Grownd API error: ${await res.text()}`)
+}
+
+exports.dailyLeaderboardBonus = onSchedule(
+  { schedule: '55 23 * * *', timeZone: 'Asia/Seoul', region: 'asia-northeast3' },
+  async () => {
+    const today = todayKST()
+
+    // 전체 학급 조회
+    const classesSnap = await db.collection('classes').get()
+
+    for (const classDoc of classesSnap.docs) {
+      const classCode = classDoc.id
+
+      // 이미 오늘 처리 완료 여부 확인
+      const bonusLogRef  = db.collection('bonusLogs').doc(`${classCode}_${today}`)
+      const bonusLogSnap = await bonusLogRef.get()
+      if (bonusLogSnap.exists) continue
+
+      // 교사 API 키 조회
+      const { teacherUid } = classDoc.data()
+      if (!teacherUid) continue
+      const teacherSnap = await db.collection('teachers').doc(teacherUid).get()
+      if (!teacherSnap.exists) continue
+      const { growndApiKey, growndClassId } = teacherSnap.data()
+      if (!growndApiKey || !growndClassId) continue
+
+      const alreadyRewarded = new Set()
+      const recipients      = []
+
+      for (const gameId of BONUS_GAME_ORDER) {
+        const logSnap = await db.collection('scoreLogs').doc(`${classCode}_${gameId}_${today}`).get()
+        if (!logSnap.exists) continue
+
+        // 정확도 내림차순 → 동점 시 시간 오름차순
+        const entries = Object.entries(logSnap.data())
+          .map(([code, v]) => ({ studentCode: code, ...v }))
+          .sort((a, b) => {
+            if (b.scoreRatio !== a.scoreRatio) return b.scoreRatio - a.scoreRatio
+            return (a.completionTime ?? 99999) - (b.completionTime ?? 99999)
+          })
+
+        let bonusCount = 0
+        for (const entry of entries) {
+          if (bonusCount >= BONUS_TOP_N) break
+          if (alreadyRewarded.has(entry.studentCode)) continue  // 다른 게임에서 이미 받은 학생 스킵
+
+          try {
+            await awardBonusPoint(growndApiKey, growndClassId, entry.studentCode, gameId)
+            alreadyRewarded.add(entry.studentCode)
+            recipients.push({
+              studentCode: entry.studentCode,
+              name:        entry.name,
+              gameId,
+              rank:        bonusCount + 1,
+            })
+            bonusCount++
+          } catch (err) {
+            console.error(`bonus award failed: ${classCode}/${gameId}/${entry.studentCode}`, err)
+          }
+        }
+      }
+
+      // 처리 결과 저장 (중복 실행 방지)
+      await bonusLogRef.set({
+        processedAt: new Date().toISOString(),
+        recipients,
+      })
+
+      console.log(`[bonus] ${classCode}: ${recipients.length}명 지급 완료`)
     }
   }
 )

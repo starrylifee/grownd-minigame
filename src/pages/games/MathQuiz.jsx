@@ -102,6 +102,7 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
   const [score, setScore]     = useState(0)
   const [timeLeft, setTimeLeft] = useState(TIMER_MAX)
   const inputRef              = useRef(null)
+  const startTimeRef          = useRef(Date.now())
 
   // 최신 idx·score를 타이머 콜백에서 참조하기 위한 ref
   const idxRef   = useRef(idx)
@@ -136,7 +137,7 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
     const s    = scoreRef.current
     const id   = setTimeout(() => {
       if (next >= TOTAL) {
-        onComplete({ score: s, scoreRatio: s / TOTAL, passed: true, mathType })
+        onComplete({ score: s, scoreRatio: s / TOTAL, completionTime: Math.round((Date.now() - startTimeRef.current) / 1000), passed: true, mathType })
       } else {
         setIdx(next)
         setInput('')
@@ -162,7 +163,7 @@ export default function MathQuiz({ activity, onComplete, onExit }) {
       const next      = idx + 1
       const newScore  = ok ? score + 1 : score
       if (next >= TOTAL) {
-        onComplete({ score: newScore, scoreRatio: newScore / TOTAL, passed: true, mathType })
+        onComplete({ score: newScore, scoreRatio: newScore / TOTAL, completionTime: Math.round((Date.now() - startTimeRef.current) / 1000), passed: true, mathType })
       } else {
         setIdx(next)
         setInput('')

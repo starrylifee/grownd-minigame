@@ -4,13 +4,22 @@ import { useAuth } from '../context/AuthContext'
 import { getAllActivities, getTodayLeaderboard, subscribeToRaidBoss } from '../lib/firestore'
 import { GAMES } from '../config/games'
 
-// 게임별 점수 표시 형식
-function formatScore(gameId, scoreRatio) {
+const TIMED_GAMES = ['word-typing', 'typing', 'math-quiz', 'vocab']
+
+function formatTime(secs) {
+  if (!secs) return ''
+  if (secs < 60) return `${secs}초`
+  return `${Math.floor(secs / 60)}분 ${secs % 60}초`
+}
+
+function formatScore(gameId, scoreRatio, completionTime) {
   if (gameId === 'raid-typing') {
     if (scoreRatio >= 1.5) return '🏆 격파 보너스!'
     return '⚔️ 참여'
   }
-  return `${Math.round(scoreRatio * 100)}%`
+  const pct  = `${Math.round(scoreRatio * 100)}%`
+  const time = TIMED_GAMES.includes(gameId) && completionTime ? ` · ${formatTime(completionTime)}` : ''
+  return pct + time
 }
 
 function LeaderboardPanel({ classCode }) {
@@ -44,7 +53,10 @@ function LeaderboardPanel({ classCode }) {
 
   return (
     <div className="mt-8">
-      <h2 className="font-black text-lg text-carnival-navy mb-3">🏆 오늘의 순위</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-black text-lg text-carnival-navy">🏆 오늘의 순위</h2>
+        <span className="text-xs text-carnival-navy/40">TOP3 +1P 자정 지급 🌱</span>
+      </div>
 
       {/* 게임 탭 */}
       <div className="flex gap-1.5 mb-4 flex-wrap">
@@ -82,8 +94,8 @@ function LeaderboardPanel({ classCode }) {
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="text-xs font-bold text-carnival-navy/60 w-20 text-right">
-                  {formatScore(currentGame.id, e.scoreRatio)}
+                <span className="text-xs font-bold text-carnival-navy/60 w-24 text-right">
+                  {formatScore(currentGame.id, e.scoreRatio, e.completionTime)}
                 </span>
               </div>
             )
