@@ -73,6 +73,7 @@ export default function GameRunner() {
         gameResult?.scoreRatio ?? 1,
         finalPoints,
         gameResult?.completionTime,
+        gameResult?.score,
       ).catch(() => {})
       setResult({
         points:  finalPoints,

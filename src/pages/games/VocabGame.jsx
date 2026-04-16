@@ -90,7 +90,7 @@ export default function VocabGame({ activity, onComplete, onExit }) {
               score: Math.round(newScore), scoreRatio, completionTime, passed: true, vocabUnit: unit,
             }
             // 복습할 단어가 있으면 복습 모드 진입, 없으면 바로 완료
-            if (wrongCount > 0) {  // reviewWords에 방금 추가 예정인 단어 포함
+            if (reviewWords.length > 0 || wrongCount > 0) {  // 이전 단어 실수 포함해서 체크
               setIsReview(true)
               setReviewIdx(0)
               setInput('')

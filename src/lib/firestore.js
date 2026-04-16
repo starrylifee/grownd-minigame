@@ -151,7 +151,7 @@ function scoreLogId(classCode, gameId) {
 /**
  * 게임 결과를 오늘의 리더보드에 저장합니다.
  */
-export async function saveGameScore(classCode, gameId, studentCode, studentName, scoreRatio, points, completionTime) {
+export async function saveGameScore(classCode, gameId, studentCode, studentName, scoreRatio, points, completionTime, score) {
   const ref  = doc(db, 'scoreLogs', scoreLogId(classCode, gameId))
   const snap = await getDoc(ref)
 
@@ -159,14 +159,20 @@ export async function saveGameScore(classCode, gameId, studentCode, studentName,
   if (snap.exists()) {
     const prev = snap.data()[studentCode]
     if (prev) {
-      const prevBetter = prev.scoreRatio > scoreRatio ||
-        (prev.scoreRatio === scoreRatio && (prev.completionTime ?? 99999) <= (completionTime ?? 99999))
-      if (prevBetter) return
+      if (gameId === 'raid-typing') {
+        // 레이드는 데미지 높은 쪽이 좋은 기록
+        if ((prev.score ?? 0) >= (score ?? 0)) return
+      } else {
+        const prevBetter = prev.scoreRatio > scoreRatio ||
+          (prev.scoreRatio === scoreRatio && (prev.completionTime ?? 99999) <= (completionTime ?? 99999))
+        if (prevBetter) return
+      }
     }
   }
 
   const entry = { name: studentName, scoreRatio, points, ts: Date.now() }
   if (completionTime != null) entry.completionTime = completionTime
+  if (score != null) entry.score = score
   await setDoc(ref, { [studentCode]: entry }, { merge: true })
 }
 
@@ -177,11 +183,22 @@ export async function saveGameScore(classCode, gameId, studentCode, studentName,
 export async function getTodayLeaderboard(classCode, gameId) {
   const snap = await getDoc(doc(db, 'scoreLogs', scoreLogId(classCode, gameId)))
   if (!snap.exists()) return []
-  return Object.entries(snap.data())
+  const entries = Object.entries(snap.data())
     .map(([code, v]) => ({ studentCode: code, ...v }))
-    .sort((a, b) => {
+
+  if (gameId === 'raid-typing') {
+    // 레이드는 데미지(score) 높은 순, 동점이면 격파 보너스(scoreRatio 1.5) 우선
+    entries.sort((a, b) => {
+      if (b.score !== a.score) return (b.score ?? 0) - (a.score ?? 0)
+      return b.scoreRatio - a.scoreRatio
+    })
+  } else {
+    entries.sort((a, b) => {
       if (b.scoreRatio !== a.scoreRatio) return b.scoreRatio - a.scoreRatio
       // 정확도 동점이면 빠른 시간 순
       return (a.completionTime ?? 99999) - (b.completionTime ?? 99999)
     })
+  }
+
+  return entries
 }

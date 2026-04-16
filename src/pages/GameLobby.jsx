@@ -12,16 +12,21 @@ function formatTime(secs) {
   return `${Math.floor(secs / 60)}분 ${secs % 60}초`
 }
 
-function formatScore(gameId, scoreRatio, completionTime) {
+function formatScore(gameId, scoreRatio, completionTime, score) {
   if (gameId === 'raid-typing') {
-    if (scoreRatio >= 1.5) return '🏆 격파 보너스!'
-    return '⚔️ 참여'
+    const dmg = score != null ? `${score.toLocaleString()} 데미지` : '⚔️ 참여'
+    if (scoreRatio >= 1.5) return `🏆 ${dmg}`
+    return dmg
   }
   if (gameId === 'math-quiz') {
     // 사칙연산은 정답 수 / 10 표시 + 시간
     const correct = Math.round(scoreRatio * 10)
     const time    = completionTime ? ` · ${formatTime(completionTime)}` : ''
     return `${correct}/10${time}`
+  }
+  if (gameId === 'word-typing' || gameId === 'typing') {
+    // 낱말/문장 타자는 scoreRatio가 항상 1.0이므로 시간만 표시
+    return completionTime ? formatTime(completionTime) : '완료'
   }
   const pct  = `${Math.round(scoreRatio * 100)}%`
   const time = completionTime ? ` · ${formatTime(completionTime)}` : ''
@@ -87,7 +92,10 @@ function LeaderboardPanel({ classCode }) {
         ) : (
           entries.slice(0, 10).map((e, i) => {
             const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`
-            const pct   = Math.min(100, Math.round((e.scoreRatio / (currentGame.id === 'raid-typing' ? 1.5 : 1)) * 100))
+            const topScore = entries[0]
+            const pct = currentGame.id === 'raid-typing'
+              ? Math.min(100, Math.round(((e.score ?? 0) / Math.max(1, topScore?.score ?? 1)) * 100))
+              : Math.min(100, Math.round((e.scoreRatio / 1) * 100))
             return (
               <div key={e.studentCode} className="flex items-center gap-3">
                 <span className="w-7 text-center text-sm font-black">{medal}</span>
@@ -101,7 +109,7 @@ function LeaderboardPanel({ classCode }) {
                   />
                 </div>
                 <span className="text-xs font-bold text-carnival-navy/60 w-24 text-right">
-                  {formatScore(currentGame.id, e.scoreRatio, e.completionTime)}
+                  {formatScore(currentGame.id, e.scoreRatio, e.completionTime, e.score)}
                 </span>
               </div>
             )

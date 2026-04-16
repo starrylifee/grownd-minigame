@@ -141,7 +141,7 @@ async function awardBonusPoint(apiKey, growndClassId, studentCode, gameId) {
 }
 
 exports.dailyLeaderboardBonus = onSchedule(
-  { schedule: '55 23 * * *', timeZone: 'Asia/Seoul', region: 'asia-northeast3' },
+  { schedule: '59 23 * * *', timeZone: 'Asia/Seoul', region: 'asia-northeast3' },
   async () => {
     const today = todayKST()
 
@@ -171,13 +171,16 @@ exports.dailyLeaderboardBonus = onSchedule(
         const logSnap = await db.collection('scoreLogs').doc(`${classCode}_${gameId}_${today}`).get()
         if (!logSnap.exists) continue
 
-        // 정확도 내림차순 → 동점 시 시간 오름차순
-        const entries = Object.entries(logSnap.data())
+        // 정확도 내림차순 → 동점 시 시간 오름차순 (낱말/문장 타자는 시간만)
+        const rawEntries = Object.entries(logSnap.data())
           .map(([code, v]) => ({ studentCode: code, ...v }))
-          .sort((a, b) => {
-            if (b.scoreRatio !== a.scoreRatio) return b.scoreRatio - a.scoreRatio
+        const entries = rawEntries.sort((a, b) => {
+          if (gameId === 'word-typing' || gameId === 'typing') {
             return (a.completionTime ?? 99999) - (b.completionTime ?? 99999)
-          })
+          }
+          if (b.scoreRatio !== a.scoreRatio) return b.scoreRatio - a.scoreRatio
+          return (a.completionTime ?? 99999) - (b.completionTime ?? 99999)
+        })
 
         let bonusCount = 0
         for (const entry of entries) {
