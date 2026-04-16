@@ -19,8 +19,6 @@ export const COUNTRIES = [
   { country: '방글라데시',    capital: '다카',            flag: '🇧🇩' },
   { country: '말레이시아',    capital: '쿠알라룸푸르',    flag: '🇲🇾' }, // ⚠️ 6음절
   { country: '몽골',          capital: '울란바토르',       flag: '🇲🇳' }, // ⚠️ 생소
-  { country: '파키스탄',      capital: '이슬라마바드',    flag: '🇵🇰' }, // ⚠️ 6음절
-  { country: '카자흐스탄',    capital: '아스타나',        flag: '🇰🇿' }, // ⚠️ 나라 이름 어려움
 
   // ── 중동 ──────────────────────────────────────────────────
   { country: '터키',          capital: '앙카라',          flag: '🇹🇷' },
@@ -54,9 +52,6 @@ export const COUNTRIES = [
   { country: '이집트',        capital: '카이로',           flag: '🇪🇬' },
   { country: '케냐',          capital: '나이로비',          flag: '🇰🇪' },
   { country: '모로코',        capital: '라바트',            flag: '🇲🇦' },
-  { country: '나이지리아',    capital: '아부자',            flag: '🇳🇬' }, // ⚠️ 아부자 생소
-  { country: '에티오피아',    capital: '아디스아바바',       flag: '🇪🇹' }, // ⚠️ 6음절
-  { country: '남아프리카공화국', capital: '프리토리아',      flag: '🇿🇦' }, // ⚠️ 나라 이름 김
 
   // ── 아메리카 ──────────────────────────────────────────────
   { country: '미국',          capital: '워싱턴',           flag: '🇺🇸' },
