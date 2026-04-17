@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect }    from 'react'
 import { useAuth }                from '../context/AuthContext'
-import { getActivity, getTodayPlayCount, saveGameScore } from '../lib/firestore'
+import { getActivity, getTodayPlayCount, saveGameScore, savePlayRound } from '../lib/firestore'
 import { awardPoints }            from '../lib/growndApi'
 import { getGame }                from '../config/games'
 import ActivityPasswordModal      from '../components/ActivityPasswordModal'
@@ -51,6 +51,14 @@ export default function GameRunner() {
   }, [gameId])
 
   async function handleComplete(gameResult) {
+    // 회차 기록 저장 (연습 모드 포함)
+    savePlayRound(student.classCode, gameId, student.studentCode, {
+      scoreRatio:     gameResult?.scoreRatio ?? 1,
+      completionTime: gameResult?.completionTime,
+      score:          gameResult?.score,
+      isPractice:     isPracticeMode,
+    }).catch(() => {})
+
     // 연습 모드: 포인트 지급 없이 바로 완료
     if (isPracticeMode) {
       setResult({ points: 0, message: '연습 완료! 💪 오늘 도전 횟수를 모두 썼지만 연습은 계속할 수 있어요.' })

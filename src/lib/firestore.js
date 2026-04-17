@@ -1,6 +1,6 @@
 import {
   doc, getDoc, setDoc, updateDoc, collection, getDocs, deleteDoc,
-  increment, onSnapshot
+  increment, onSnapshot, arrayUnion
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -94,6 +94,16 @@ function playLogId(classCode, gameId, studentCode) {
 export async function getTodayPlayCount(classCode, gameId, studentCode) {
   const snap = await getDoc(doc(db, 'playLogs', playLogId(classCode, gameId, studentCode)))
   return snap.exists() ? (snap.data().count || 0) : 0
+}
+
+export async function savePlayRound(classCode, gameId, studentCode, roundData) {
+  const ref = doc(db, 'playLogs', playLogId(classCode, gameId, studentCode))
+  await setDoc(ref, { rounds: arrayUnion({ ts: Date.now(), ...roundData }) }, { merge: true })
+}
+
+export async function getStudentRounds(classCode, gameId, studentCode) {
+  const snap = await getDoc(doc(db, 'playLogs', playLogId(classCode, gameId, studentCode)))
+  return snap.exists() ? (snap.data().rounds || []) : []
 }
 
 // ── 레이드 보스 ────────────────────────────────────────────

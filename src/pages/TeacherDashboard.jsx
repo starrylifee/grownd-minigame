@@ -7,6 +7,7 @@ import {
   getTeacher, saveTeacher, getClass, saveClass,
   saveActivity, getActivity, hashPassword,
   getRaidBoss, resetRaidBoss, getTodayLeaderboard,
+  getStudentRounds,
 } from '../lib/firestore'
 import { GAMES } from '../config/games'
 import { VOCAB_UNIT_NAMES } from '../data/vocabData'
@@ -32,6 +33,27 @@ function formatTime(secs) {
   if (!secs) return ''
   if (secs < 60) return `${secs}초`
   return `${Math.floor(secs / 60)}분 ${secs % 60}초`
+}
+
+function formatPlayedAt(ts) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  const h = d.getHours().toString().padStart(2, '0')
+  const m = d.getMinutes().toString().padStart(2, '0')
+  const s = d.getSeconds().toString().padStart(2, '0')
+  return `${h}:${m}:${s}`
+}
+
+function formatRoundResult(gameId, round) {
+  if (gameId === 'raid-typing') {
+    const dmg = round.score ?? 0
+    return round.scoreRatio >= 1.5 ? `🏆 ${dmg}` : `⚔️ ${dmg}`
+  }
+  if (gameId === 'math-quiz') return `${Math.round((round.scoreRatio ?? 0) * 10)}/10`
+  if (gameId === 'word-typing' || gameId === 'typing') {
+    return round.completionTime ? formatTime(round.completionTime) : '완료'
+  }
+  return `${Math.round((round.scoreRatio ?? 0) * 100)}%`
 }
 
 function formatActivity(gameId, entry) {
@@ -116,6 +138,15 @@ export default function TeacherDashboard() {
   // 학생 활동
   const [activityMap, setActivityMap]       = useState({})  // { studentCode: { gameId: entry } }
   const [activityLoading, setActivityLoading] = useState(false)
+
+  // 회차별 상세 모달
+  const [roundModal, setRoundModal] = useState(null) // { studentNum, studentName, game, rounds, loading }
+
+  async function openRoundModal(num, name, game) {
+    setRoundModal({ studentNum: num, studentName: name, game, rounds: [], loading: true })
+    const rounds = await getStudentRounds(classCode, game.id, num)
+    setRoundModal(prev => prev ? { ...prev, rounds, loading: false } : null)
+  }
 
   useEffect(() => {
     if (!teacher) return
@@ -822,13 +853,16 @@ export default function TeacherDashboard() {
                               {playedGames.map(game => {
                                 const entry = studentActivity[game.id]
                                 return (
-                                  <div key={game.id}
-                                    className="flex items-center gap-1 bg-carnival-cream rounded-xl px-2.5 py-1">
+                                  <button
+                                    key={game.id}
+                                    onClick={() => openRoundModal(num, s.name, game)}
+                                    className="flex items-center gap-1 bg-carnival-cream rounded-xl px-2.5 py-1 hover:bg-carnival-sky/20 transition-colors"
+                                  >
                                     <span className="text-sm">{game.icon}</span>
                                     <span className="text-xs font-bold text-carnival-navy">
                                       {formatActivity(game.id, entry)}
                                     </span>
-                                  </div>
+                                  </button>
                                 )
                               })}
                             </div>
@@ -869,6 +903,67 @@ export default function TeacherDashboard() {
               )}
             </div>
           )}
+        </div>
+      )}
+      {/* ── 회차별 상세 모달 ── */}
+      {roundModal && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4"
+          onClick={() => setRoundModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-sm shadow-xl p-6 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className={`w-8 h-8 ${roundModal.game.color} rounded-lg flex items-center justify-center text-lg`}>
+                  {roundModal.game.icon}
+                </div>
+                <div>
+                  <p className="font-black text-carnival-navy text-sm">{roundModal.studentNum}번 {roundModal.studentName}</p>
+                  <p className="text-xs text-carnival-navy/40">{roundModal.game.name} 회차 기록</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRoundModal(null)}
+                className="text-carnival-navy/30 hover:text-carnival-coral text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            {roundModal.loading ? (
+              <div className="text-center py-6 text-2xl animate-bounce-slow">🎡</div>
+            ) : roundModal.rounds.length === 0 ? (
+              <p className="text-center text-carnival-navy/30 py-6 text-sm">오늘 플레이 기록이 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {[...roundModal.rounds]
+                  .sort((a, b) => a.ts - b.ts)
+                  .map((round, i) => (
+                    <div key={i} className={`flex items-center justify-between rounded-2xl px-4 py-3 ${
+                      round.isPractice ? 'bg-amber-50 border border-amber-100' : 'bg-carnival-cream'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span className="badge bg-carnival-yellow text-carnival-navy text-xs">{i + 1}회차</span>
+                        {round.isPractice && (
+                          <span className="text-xs text-amber-600 font-bold">연습</span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-carnival-navy">
+                          {formatRoundResult(roundModal.game.id, round)}
+                        </p>
+                        <p className="text-xs text-carnival-navy/40 font-mono">
+                          {formatPlayedAt(round.ts)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
