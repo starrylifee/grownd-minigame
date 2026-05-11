@@ -150,7 +150,7 @@ function Ladybug({ dots, isTarget = false }) {
   }
 
   return (
-    <div className="relative w-48 h-48 md:w-56 md:h-56 select-none">
+    <div className="relative w-40 h-40 lg:w-48 lg:h-48 select-none">
       <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-16 h-10 bg-gray-900 rounded-t-full z-0">
         <div className="absolute -top-3 left-2 w-1.5 h-4 bg-gray-900 rotate-[30deg] origin-bottom rounded-full" />
         <div className="absolute -top-3 right-2 w-1.5 h-4 bg-gray-900 -rotate-[30deg] origin-bottom rounded-full" />
@@ -246,117 +246,115 @@ export default function LadybugGame({ activity, onComplete, onExit }) {
   }
 
   return (
-    <div className="min-h-screen bg-green-50 flex flex-col items-center py-8 px-4">
-      <div className="max-w-4xl w-full">
-        {/* 헤더 */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">
-              🐞 무당벌레 등 무늬 퀴즈
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">중앙 점을 기준으로 좌표를 입력해 목표 무늬를 완성하세요!</p>
+    <div className="h-screen overflow-hidden bg-green-50 flex flex-col">
+
+      {/* 상단 바 */}
+      <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-black text-gray-900">🐞 무당벌레 등 무늬 퀴즈</h1>
+          <div className="bg-red-50 px-4 py-1 rounded-full font-bold text-red-500 border border-red-100 text-sm">
+            {currentLevel.title} ({level + 1} / {LEVELS.length})
           </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <p className="text-xs text-gray-400 font-medium hidden sm:block">⚠️ 5단계 모두 클리어 시 포인트 지급</p>
           <button
             onClick={onExit}
-            className="text-sm text-gray-400 hover:text-red-400 transition-colors mt-1 shrink-0"
+            className="text-sm text-gray-400 hover:text-red-400 transition-colors"
           >
             나가기
           </button>
         </div>
+      </div>
 
-        {/* 레벨 표시 */}
-        <div className="text-center mb-6">
-          <div className="inline-block bg-white px-6 py-2 rounded-full shadow-sm font-bold text-red-500 border border-red-100">
-            {currentLevel.title} ({level + 1} / {LEVELS.length})
-          </div>
-          <p className="text-xs text-gray-400 mt-2 font-medium">
-            ⚠️ 5단계를 모두 클리어해야 포인트를 받을 수 있어요!
-          </p>
-        </div>
+      {/* 메인 영역 */}
+      <div className="flex-1 flex gap-5 px-6 py-5 overflow-hidden min-h-0">
 
-        {/* 무당벌레 영역 */}
-        <div className="flex flex-col md:flex-row gap-8 justify-center items-center mb-8">
-          <div className="flex flex-col items-center bg-white p-6 rounded-3xl shadow-sm border border-gray-100 w-full md:w-auto">
-            <h3 className="text-lg font-bold text-gray-500 mb-6">목표 무늬</h3>
+        {/* 좌측: 무당벌레 두 마리 */}
+        <div className="flex-1 flex items-center justify-center gap-5">
+          <div className="flex flex-col items-center bg-white px-5 py-4 rounded-3xl shadow-sm border border-gray-100">
+            <h3 className="text-sm font-bold text-gray-500 mb-4">목표 무늬</h3>
             <Ladybug dots={currentLevel.target} isTarget />
           </div>
 
-          <div className="hidden md:block text-gray-300 font-black text-4xl">➡️</div>
+          <div className="text-gray-300 text-3xl">➡️</div>
 
-          <div className="flex flex-col items-center bg-white p-6 rounded-3xl shadow-lg border-2 border-red-100 w-full md:w-auto relative">
-            <h3 className="text-lg font-black text-red-500 mb-6">내 무당벌레</h3>
+          <div className="flex flex-col items-center bg-white px-5 py-4 rounded-3xl shadow-lg border-2 border-red-100 relative">
+            <h3 className="text-sm font-black text-red-500 mb-4">내 무당벌레</h3>
             <Ladybug dots={playerDots} />
-            <div className="absolute top-4 right-4 bg-gray-100 px-3 py-1 rounded-full text-sm font-bold text-gray-500">
+            <div className="absolute top-3 right-3 bg-gray-100 px-2 py-0.5 rounded-full text-xs font-bold text-gray-500">
               점: {playerDots.length}개
             </div>
           </div>
         </div>
 
-        {/* 컨트롤 패널 */}
-        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xl max-w-xl mx-auto border border-gray-100">
-          <div className="space-y-5">
-            {/* 상하 입력 */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-200">
-              <span className="font-bold text-gray-700 w-24">↕️ 상하(수직)</span>
-              <div className="flex gap-2 sm:gap-4 overflow-x-auto">
-                <ButtonGroup
-                  options={[{ label: '상', value: '상' }, { label: '하', value: '하' }]}
-                  value={vDir}
-                  onChange={setVDir}
-                />
-                <ButtonGroup
-                  options={[{ label: '0칸', value: 0 }, { label: '1칸', value: 1 }, { label: '2칸', value: 2 }]}
-                  value={vDist}
-                  onChange={setVDist}
-                />
+        {/* 우측: 컨트롤 패널 */}
+        <div className="w-72 lg:w-80 shrink-0 flex flex-col justify-center">
+          <div className="bg-white p-5 rounded-3xl shadow-xl border border-gray-100">
+            <div className="space-y-3">
+              {/* 상하 입력 */}
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-2xl border border-gray-200">
+                <span className="font-bold text-gray-700 text-sm shrink-0 w-14">↕️ 상하</span>
+                <div className="flex gap-1.5 flex-wrap">
+                  <ButtonGroup
+                    options={[{ label: '상', value: '상' }, { label: '하', value: '하' }]}
+                    value={vDir}
+                    onChange={setVDir}
+                  />
+                  <ButtonGroup
+                    options={[{ label: '0칸', value: 0 }, { label: '1칸', value: 1 }, { label: '2칸', value: 2 }]}
+                    value={vDist}
+                    onChange={setVDist}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* 좌우 입력 */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-200">
-              <span className="font-bold text-gray-700 w-24">↔️ 좌우(수평)</span>
-              <div className="flex gap-2 sm:gap-4 overflow-x-auto">
-                <ButtonGroup
-                  options={[{ label: '좌', value: '좌' }, { label: '우', value: '우' }]}
-                  value={hDir}
-                  onChange={setHDir}
-                />
-                <ButtonGroup
-                  options={[{ label: '0칸', value: 0 }, { label: '1칸', value: 1 }, { label: '2칸', value: 2 }]}
-                  value={hDist}
-                  onChange={setHDist}
-                />
+              {/* 좌우 입력 */}
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-2xl border border-gray-200">
+                <span className="font-bold text-gray-700 text-sm shrink-0 w-14">↔️ 좌우</span>
+                <div className="flex gap-1.5 flex-wrap">
+                  <ButtonGroup
+                    options={[{ label: '좌', value: '좌' }, { label: '우', value: '우' }]}
+                    value={hDir}
+                    onChange={setHDir}
+                  />
+                  <ButtonGroup
+                    options={[{ label: '0칸', value: 0 }, { label: '1칸', value: 1 }, { label: '2칸', value: 2 }]}
+                    value={hDist}
+                    onChange={setHDist}
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* 메시지 */}
-            {message && (
-              <div className="text-center text-sm font-bold text-red-500 bg-red-50 py-2 rounded-lg">
-                ⚠️ {message}
-              </div>
-            )}
+              {/* 메시지 */}
+              {message && (
+                <div className="text-center text-xs font-bold text-red-500 bg-red-50 py-1.5 rounded-lg">
+                  ⚠️ {message}
+                </div>
+              )}
 
-            {/* 액션 버튼 */}
-            <div className="pt-2 flex flex-col gap-3">
-              <button
-                className="w-full bg-gray-800 text-white font-bold py-4 rounded-xl hover:bg-gray-900 transition-colors shadow-md text-lg"
-                onClick={handleAddDot}
-              >
-                현재 좌표에 점 찍기
-              </button>
-              <div className="flex gap-3">
+              {/* 액션 버튼 */}
+              <div className="pt-1 flex flex-col gap-2">
                 <button
-                  className="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-300 transition-colors"
-                  onClick={handleResetDots}
+                  className="w-full bg-gray-800 text-white font-bold py-3 rounded-xl hover:bg-gray-900 transition-colors shadow-md"
+                  onClick={handleAddDot}
                 >
-                  무늬 초기화
+                  현재 좌표에 점 찍기
                 </button>
-                <button
-                  className="flex-[2] bg-red-500 text-white font-black py-3 rounded-xl hover:bg-red-600 transition-colors shadow-md shadow-red-500/30"
-                  onClick={handleCheckAnswer}
-                >
-                  정답 확인하기
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl hover:bg-gray-300 transition-colors text-sm"
+                    onClick={handleResetDots}
+                  >
+                    무늬 초기화
+                  </button>
+                  <button
+                    className="flex-[2] bg-red-500 text-white font-black py-2.5 rounded-xl hover:bg-red-600 transition-colors shadow-md shadow-red-500/30 text-sm"
+                    onClick={handleCheckAnswer}
+                  >
+                    정답 확인하기
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -422,3 +420,4 @@ export default function LadybugGame({ activity, onComplete, onExit }) {
     </div>
   )
 }
+
