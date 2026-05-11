@@ -11,6 +11,7 @@ import MathQuiz        from '../pages/games/MathQuiz'
 import RaidTypingGame  from '../pages/games/RaidTypingGame'
 import VocabGame       from '../pages/games/VocabGame'
 import CountryQuizGame from '../pages/games/CountryQuizGame'
+import LadybugGame     from '../pages/games/LadybugGame'
 
 export const GAMES = [
   {
@@ -67,6 +68,17 @@ export const GAMES = [
     component:         CountryQuizGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
+  },
+  {
+    id:                'ladybug',
+    name:              '무당벌레 무늬',
+    icon:              '🐞',
+    description:       '좌표를 입력해 목표 무늬를 완성하세요! 5단계를 모두 클리어해야 포인트를 받을 수 있어요.',
+    duration:          '약 5분',
+    color:             'bg-red-400',
+    component:         LadybugGame,
+    defaultDailyLimit: 3,
+    defaultPoints:     15,
   },
   {
     id:                'raid-typing',
