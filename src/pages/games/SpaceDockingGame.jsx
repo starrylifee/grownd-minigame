@@ -90,6 +90,9 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
   const shipWrapRef  = useRef(null)
   const targetWrapRef = useRef(null)
   const fadeTimerRef = useRef(null)
+  const timerRef     = useRef(null)   // countdown setTimeout handle
+  const timeLeftRef  = useRef(null)   // mutable remaining seconds
+  const gamePhaseRef = useRef('playing') // sync of gamePhase for use inside setTimeout
 
   const [level, setLevel]           = useState(1)
   const [currentState, setCurrentState] = useState({ x: 1, y: 1 })
@@ -113,6 +116,7 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
   const [milestoneMsg, setMilestoneMsg]   = useState(null)
   const [gamePhase, setGamePhase]         = useState('playing') // 'playing' | 'gameover' | 'result'
   const [gameOverInfo, setGameOverInfo]   = useState(null)
+  const [timeLeft, setTimeLeft]           = useState(null)
 
   // 구간별 셔플된 도형 순서 (20개)
   // 5단계씩 4구간: [1-5] [6-10] [11-15] [16-20] 각각 독립 셔플
@@ -186,6 +190,45 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
     return () => { window.removeEventListener('resize', resize); cancelAnimationFrame(animId) }
   }, [])
 
+  // gamePhase ref 동기화 (타이머 콜백에서 stale closure 방지)
+  useEffect(() => { gamePhaseRef.current = gamePhase }, [gamePhase])
+
+  // ── 타이머 ──
+  function getTimeLimit(lvl) {
+    if (lvl <= 5) return 5   // 1구간
+    return 3                  // 2~4구간
+  }
+
+  function clearTimerFn() {
+    clearTimeout(timerRef.current)
+    setTimeLeft(null)
+  }
+
+  function startTimerFn(lvl) {
+    clearTimeout(timerRef.current)
+    const limit = getTimeLimit(lvl)
+    timeLeftRef.current = limit
+    setTimeLeft(limit)
+
+    function tick() {
+      if (gamePhaseRef.current !== 'playing') return
+      timeLeftRef.current -= 1
+      setTimeLeft(timeLeftRef.current)
+      if (timeLeftRef.current <= 0) {
+        setGamePhase('gameover')
+        setGameOverInfo({
+          title: '시간 초과! ⏰',
+          desc: '제한 시간 내에 버튼을 누르지 않았습니다.',
+          feedback: '더 빠르게 방향을 판단해보세요!',
+        })
+      } else {
+        timerRef.current = setTimeout(tick, 1000)
+      }
+    }
+
+    timerRef.current = setTimeout(tick, 1000)
+  }
+
   // Generate level
   useEffect(() => {
     setCurrentState({ x: 1, y: 1 })
@@ -214,7 +257,12 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
       }, delay)
     }
 
-    return () => clearTimeout(fadeTimerRef.current)
+    startTimerFn(level)
+
+    return () => {
+      clearTimeout(fadeTimerRef.current)
+      clearTimeout(timerRef.current)
+    }
   }, [level])
 
   function flip(axis) {
@@ -223,6 +271,7 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
     setCurrentState(prev =>
       axis === 'X' ? { ...prev, x: prev.x * -1 } : { ...prev, y: prev.y * -1 }
     )
+    startTimerFn(level) // 버튼 누를 때마다 타이머 리셋
   }
 
   function showFeedback(type) {
@@ -238,6 +287,7 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
 
   function attemptDock() {
     if (isAnimating || !targetState) return
+    clearTimerFn() // 도킹 시도 중 타이머 정지
     setIsAnimating(true)
 
     clearTimeout(fadeTimerRef.current)
@@ -542,6 +592,32 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
                 ⚠️ 통신 장애: 잠시 후 목표 실루엣이 사라집니다!
               </div>
             )}
+
+            {/* ── 타이머 바 ── */}
+            {timeLeft !== null && (() => {
+              const limit = getTimeLimit(level)
+              const pct   = (timeLeft / limit) * 100
+              const color = timeLeft <= 1 ? '#f87171' : timeLeft <= 2 ? '#fbbf24' : '#4ade80'
+              return (
+                <div className="relative z-20 w-full max-w-5xl px-4 mb-1">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg font-bold mono-font w-6 text-right"
+                      style={{ color, filter: `drop-shadow(0 0 6px ${color})` }}>
+                      {timeLeft}
+                    </span>
+                    <div className="flex-1 bg-slate-800/70 rounded-full h-2.5 overflow-hidden border border-slate-700/50">
+                      <div className="h-full rounded-full"
+                        style={{
+                          width: `${pct}%`,
+                          background: color,
+                          transition: 'width 0.9s linear, background 0.3s ease',
+                          boxShadow: `0 0 8px ${color}99`,
+                        }} />
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* ── 조작 버튼 ── */}
             <div className="relative z-10 w-full max-w-5xl px-4 pb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
