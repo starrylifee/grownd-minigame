@@ -114,7 +114,28 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
   const [gamePhase, setGamePhase]         = useState('playing') // 'playing' | 'gameover' | 'result'
   const [gameOverInfo, setGameOverInfo]   = useState(null)
 
-  const shapeIdx = (level - 1) % SHIP_HTML.length
+  // 구간별 셔플된 도형 순서 (20개)
+  // 5단계씩 4구간: [1-5] [6-10] [11-15] [16-20] 각각 독립 셔플
+  const [shapeOrder] = useState(() => {
+    function shuffle(arr) {
+      const a = [...arr]
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]]
+      }
+      return a
+    }
+    const indices = Array.from({ length: SHIP_HTML.length }, (_, i) => i) // [0..9]
+    // 구간마다 전체 도형을 섞어서 앞 5개씩 사용
+    return [
+      ...shuffle(indices).slice(0, 5),   // 1~5단계
+      ...shuffle(indices).slice(0, 5),   // 6~10단계
+      ...shuffle(indices).slice(0, 5),   // 11~15단계
+      ...shuffle(indices).slice(0, 5),   // 16~20단계
+    ]
+  })
+
+  const shapeIdx = shapeOrder[level - 1] ?? (level - 1) % SHIP_HTML.length
 
   // Starfield canvas
   useEffect(() => {
