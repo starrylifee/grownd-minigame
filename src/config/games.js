@@ -5,13 +5,14 @@
  * 각 항목의 id는 Firestore activities/{classCode}_{id} 문서 키로 사용됩니다.
  */
 
-import WordTypingGame  from '../pages/games/WordTypingGame'
-import TypingGame      from '../pages/games/TypingGame'
-import MathQuiz        from '../pages/games/MathQuiz'
-import RaidTypingGame  from '../pages/games/RaidTypingGame'
-import VocabGame       from '../pages/games/VocabGame'
-import CountryQuizGame from '../pages/games/CountryQuizGame'
-import LadybugGame     from '../pages/games/LadybugGame'
+import WordTypingGame    from '../pages/games/WordTypingGame'
+import TypingGame        from '../pages/games/TypingGame'
+import MathQuiz          from '../pages/games/MathQuiz'
+import RaidTypingGame    from '../pages/games/RaidTypingGame'
+import VocabGame         from '../pages/games/VocabGame'
+import CountryQuizGame   from '../pages/games/CountryQuizGame'
+import LadybugGame       from '../pages/games/LadybugGame'
+import SpaceDockingGame  from '../pages/games/SpaceDockingGame'
 
 export const GAMES = [
   {
@@ -77,6 +78,17 @@ export const GAMES = [
     duration:          '약 5분',
     color:             'bg-red-400',
     component:         LadybugGame,
+    defaultDailyLimit: 3,
+    defaultPoints:     15,
+  },
+  {
+    id:                'space-docking',
+    name:              '우주 도킹',
+    icon:              '🚀',
+    description:       '우주선 모듈의 방향을 맞춰 도킹하세요! 10·15·20단계마다 포인트가 쌓입니다.',
+    duration:          '약 5분',
+    color:             'bg-gradient-to-r from-slate-800 to-cyan-900',
+    component:         SpaceDockingGame,
     defaultDailyLimit: 3,
     defaultPoints:     15,
   },

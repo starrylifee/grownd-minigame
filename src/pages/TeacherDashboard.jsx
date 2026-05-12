@@ -53,6 +53,13 @@ function formatRoundResult(gameId, round) {
   if (gameId === 'word-typing' || gameId === 'typing') {
     return round.completionTime ? formatTime(round.completionTime) : '완료'
   }
+  if (gameId === 'space-docking') {
+    const r = round.scoreRatio ?? 0
+    if (r >= 1.0) return '🚀 20단계 완주'
+    if (r >= 0.66) return '⭐ 15단계 클리어'
+    if (r >= 0.33) return '🎉 10단계 클리어'
+    return `${round.score ?? 0}단계`
+  }
   return `${Math.round((round.scoreRatio ?? 0) * 100)}%`
 }
 
@@ -65,6 +72,13 @@ function formatActivity(gameId, entry) {
   if (gameId === 'math-quiz') return `${Math.round((entry.scoreRatio ?? 0) * 10)}/10`
   if (gameId === 'word-typing' || gameId === 'typing') {
     return entry.completionTime ? formatTime(entry.completionTime) : '완료'
+  }
+  if (gameId === 'space-docking') {
+    const r = entry.scoreRatio ?? 0
+    if (r >= 1.0) return '🚀 완주'
+    if (r >= 0.66) return '⭐ 15단계'
+    if (r >= 0.33) return '🎉 10단계'
+    return `${entry.score ?? 0}단계`
   }
   return `${Math.round((entry.scoreRatio ?? 0) * 100)}%`
 }
@@ -93,6 +107,13 @@ function defaultSettingsFor(game) {
   if (game.id === 'typing')      return { ...base, typingLevel: 1 }
   if (game.id === 'math-quiz')   return { ...base, mathType: 'single-add' }
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
+  if (game.id === 'space-docking') return {
+    ...base,
+    pointsPerCompletion: 15,  // 세 마일스톤 합산 (자동 계산)
+    milestone10: 5,
+    milestone15: 5,
+    milestone20: 5,
+  }
   if (game.id === 'raid-typing') return {
     ...base,
     dailyLimit:      1,
@@ -258,10 +279,14 @@ export default function TeacherDashboard() {
   }
 
   function updateGameSetting(gameId, field, value) {
-    setGameSettings(prev => ({
-      ...prev,
-      [gameId]: { ...prev[gameId], [field]: value },
-    }))
+    setGameSettings(prev => {
+      const next = { ...prev[gameId], [field]: value }
+      // space-docking: 마일스톤 변경 시 pointsPerCompletion 자동 합산
+      if (gameId === 'space-docking' && ['milestone10', 'milestone15', 'milestone20'].includes(field)) {
+        next.pointsPerCompletion = (next.milestone10 ?? 5) + (next.milestone15 ?? 5) + (next.milestone20 ?? 5)
+      }
+      return { ...prev, [gameId]: next }
+    })
   }
 
   // 토글: 즉시 저장
@@ -279,7 +304,11 @@ export default function TeacherDashboard() {
     if (!classCode) return
     setSaving(true)
     const game = GAMES.find(g => g.id === gameId)
-    const s    = gameSettings[gameId]
+    const s    = { ...gameSettings[gameId] }
+    // space-docking: pointsPerCompletion 항상 마일스톤 합산으로 덮어쓰기
+    if (gameId === 'space-docking') {
+      s.pointsPerCompletion = (s.milestone10 ?? 5) + (s.milestone15 ?? 5) + (s.milestone20 ?? 5)
+    }
     if (s) await saveActivity(classCode, gameId, { name: game.name, ...s })
     flash('✅ 저장되었습니다!')
     setSaving(false)
@@ -540,7 +569,7 @@ export default function TeacherDashboard() {
               </div>
 
               {/* 공통 설정 */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid gap-2 ${selectedGameId === 'space-docking' ? 'grid-cols-2' : 'grid-cols-3'}`}>
                 <div>
                   <label className="block text-xs font-bold text-carnival-navy/50 mb-1">활동 비밀번호</label>
                   <input
@@ -550,15 +579,17 @@ export default function TeacherDashboard() {
                     className="input-field text-sm py-2"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-carnival-navy/50 mb-1">지급 포인트</label>
-                  <input
-                    type="number" min="0"
-                    value={selectedS.pointsPerCompletion ?? selectedGame.defaultPoints ?? 10}
-                    onChange={e => updateGameSetting(selectedGameId, 'pointsPerCompletion', Number(e.target.value))}
-                    className="input-field text-sm py-2"
-                  />
-                </div>
+                {selectedGameId !== 'space-docking' && (
+                  <div>
+                    <label className="block text-xs font-bold text-carnival-navy/50 mb-1">지급 포인트</label>
+                    <input
+                      type="number" min="0"
+                      value={selectedS.pointsPerCompletion ?? selectedGame.defaultPoints ?? 10}
+                      onChange={e => updateGameSetting(selectedGameId, 'pointsPerCompletion', Number(e.target.value))}
+                      className="input-field text-sm py-2"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-bold text-carnival-navy/50 mb-1">하루 횟수 제한</label>
                   <input
@@ -569,6 +600,36 @@ export default function TeacherDashboard() {
                   />
                 </div>
               </div>
+
+              {/* ── 우주 도킹 마일스톤 포인트 ── */}
+              {selectedGameId === 'space-docking' && (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="font-bold text-sm">🚀 단계별 지급 포인트</p>
+                    <span className="text-xs text-carnival-navy/40 bg-white border border-slate-200 rounded-full px-2 py-0.5">
+                      합계 <strong className="text-carnival-coral">{(selectedS.milestone10 ?? 5) + (selectedS.milestone15 ?? 5) + (selectedS.milestone20 ?? 5)}</strong>점
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { field: 'milestone10', label: '🎉 10단계', color: 'text-yellow-600' },
+                      { field: 'milestone15', label: '⭐ 15단계', color: 'text-orange-500' },
+                      { field: 'milestone20', label: '🚀 20단계', color: 'text-red-500' },
+                    ].map(({ field, label, color }) => (
+                      <div key={field}>
+                        <label className={`block text-xs font-bold mb-1 ${color}`}>{label}</label>
+                        <input
+                          type="number" min="0"
+                          value={selectedS[field] ?? 5}
+                          onChange={e => updateGameSetting('space-docking', field, Number(e.target.value))}
+                          className="input-field text-sm py-2 text-center"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-carnival-navy/40">각 단계 클리어 시 해당 포인트가 누적 지급돼요. 숫자 제한 없이 자유롭게 설정하세요.</p>
+                </div>
+              )}
 
               {/* 연습 모드 */}
               <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
