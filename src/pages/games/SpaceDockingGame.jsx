@@ -598,7 +598,7 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
               <button onClick={handleFinish}
                 className="btn-neon rounded-2xl px-8 py-3 text-lg font-bold"
                 style={{ borderColor: 'rgba(239,68,68,0.5)' }}>
-                {highestMilestone >= 10 ? '부분 포인트 받기' : '완료'} 🏁
+                {highestMilestone >= 10 ? '부분 포인트 받기 🏁' : '확인 (포인트 없음) 🏁'}
               </button>
             </div>
           </div>

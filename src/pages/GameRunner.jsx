@@ -65,6 +65,12 @@ export default function GameRunner() {
       return
     }
 
+    // scoreRatio = 0: 마일스톤 미달성 → API 호출 없이 0포인트 완료
+    if (gameResult?.scoreRatio === 0) {
+      setResult({ points: 0, message: '아직 포인트 조건을 달성하지 못했어요. 다시 도전해보세요! 💪' })
+      return
+    }
+
     setAwarding(true)
     try {
       const res = await awardPoints(
