@@ -117,6 +117,7 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
   const [gamePhase, setGamePhase]         = useState('playing') // 'playing' | 'gameover' | 'result'
   const [gameOverInfo, setGameOverInfo]   = useState(null)
   const [timeLeft, setTimeLeft]           = useState(null)
+  const [btnOrder, setBtnOrder]           = useState(['Y', 'X']) // 16단계부터 랜덤 교란
 
   // 구간별 셔플된 도형 순서 (20개)
   // 5단계씩 4구간: [1-5] [6-10] [11-15] [16-20] 각각 독립 셔플
@@ -256,6 +257,9 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
         setShowDiffAlert(false)
       }, delay)
     }
+
+    // 16단계 이상: 버튼 순서 랜덤 교란
+    setBtnOrder(level > 15 ? (Math.random() > 0.5 ? ['Y', 'X'] : ['X', 'Y']) : ['Y', 'X'])
 
     startTimerFn(level)
 
@@ -621,14 +625,14 @@ export default function SpaceDockingGame({ activity, onComplete, onExit }) {
 
             {/* ── 조작 버튼 ── */}
             <div className="relative z-10 w-full max-w-5xl px-4 pb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-              <button onClick={() => flip('Y')} className="btn-neon rounded-xl py-4 flex flex-col items-center gap-0.5">
-                <span className="text-base font-bold tracking-wide">위아래 (상하)</span>
-                <span className="text-xs text-cyan-300 opacity-80">뒤집기 ↕</span>
-              </button>
-              <button onClick={() => flip('X')} className="btn-neon rounded-xl py-4 flex flex-col items-center gap-0.5">
-                <span className="text-base font-bold tracking-wide">양옆 (좌우)</span>
-                <span className="text-xs text-cyan-300 opacity-80">뒤집기 ↔</span>
-              </button>
+              {btnOrder.map(axis => (
+                <button key={axis} onClick={() => flip(axis)} className="btn-neon rounded-xl py-4 flex flex-col items-center gap-0.5">
+                  {axis === 'Y'
+                    ? <><span className="text-base font-bold tracking-wide">위아래 (상하)</span><span className="text-xs text-cyan-300 opacity-80">뒤집기 ↕</span></>
+                    : <><span className="text-base font-bold tracking-wide">양옆 (좌우)</span><span className="text-xs text-cyan-300 opacity-80">뒤집기 ↔</span></>
+                  }
+                </button>
+              ))}
               <button onClick={attemptDock} className="btn-dock rounded-xl py-4 text-xl font-bold tracking-widest col-span-2 flex items-center justify-center gap-2">
                 도킹 시도! <span className="text-2xl">⚡</span>
               </button>
