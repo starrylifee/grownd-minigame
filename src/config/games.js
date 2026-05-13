@@ -13,6 +13,7 @@ import VocabGame         from '../pages/games/VocabGame'
 import CountryQuizGame   from '../pages/games/CountryQuizGame'
 import LadybugGame       from '../pages/games/LadybugGame'
 import SpaceDockingGame  from '../pages/games/SpaceDockingGame'
+import ShapeRotationGame from '../pages/games/ShapeRotationGame'
 
 export const GAMES = [
   {
@@ -89,6 +90,17 @@ export const GAMES = [
     duration:          '약 5분',
     color:             'bg-gradient-to-r from-slate-800 to-cyan-900',
     component:         SpaceDockingGame,
+    defaultDailyLimit: 3,
+    defaultPoints:     15,
+  },
+  {
+    id:                'shape-rotation',
+    name:              '도형 돌리기',
+    icon:              '🌀',
+    description:       '사진을 16조각으로 나눠 돌려놓은 퍼즐! 90°·180°·270° 돌아간 조각을 클릭해서 모두 바른 방향으로 맞춰보세요.',
+    duration:          '약 5분',
+    color:             'bg-blue-500',
+    component:         ShapeRotationGame,
     defaultDailyLimit: 3,
     defaultPoints:     15,
   },
