@@ -15,8 +15,9 @@ import CountryQuizGame2  from '../pages/games/CountryQuizGame2'
 import FlagQuizGame      from '../pages/games/FlagQuizGame'
 import ProverbChosungGame from '../pages/games/ProverbChosungGame'
 import WordMeaningGame   from '../pages/games/WordMeaningGame'
-import WordChainGame     from '../pages/games/WordChainGame'
-import WordChainGameEn   from '../pages/games/WordChainGameEn'
+// 레거시: 끝말잇기 (학생 난이도 문제로 비공개, 코드는 보존)
+// import WordChainGame     from '../pages/games/WordChainGame'
+// import WordChainGameEn   from '../pages/games/WordChainGameEn'
 import LadybugGame       from '../pages/games/LadybugGame'
 import SpaceDockingGame  from '../pages/games/SpaceDockingGame'
 import ShapeRotationGame from '../pages/games/ShapeRotationGame'
@@ -121,28 +122,30 @@ export const GAMES = [
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },
-  {
-    id:                'word-chain-ko',
-    name:              '끝말잇기 (한글)',
-    icon:              '🔗',
-    description:       '컴퓨터와 끝말잇기 대결! 제한 시간 안에 단어를 이어 목표 개수를 달성하세요. 두음법칙도 인정됩니다.',
-    duration:          '약 3분',
-    color:             'bg-lime-500',
-    component:         WordChainGame,
-    defaultDailyLimit: 5,
-    defaultPoints:     10,
-  },
-  {
-    id:                'word-chain-en',
-    name:              'Word Chain (영어)',
-    icon:              '🔠',
-    description:       '영어 끝말잇기! 단어의 마지막 알파벳으로 시작하는 단어를 제한 시간 안에 이어가세요.',
-    duration:          '약 3분',
-    color:             'bg-sky-500',
-    component:         WordChainGameEn,
-    defaultDailyLimit: 5,
-    defaultPoints:     10,
-  },
+  // ── 레거시: 끝말잇기 (학생 난이도 문제로 비공개) ──
+  // 다시 살리려면 위 import 2줄과 아래 항목의 주석을 해제하세요.
+  // {
+  //   id:                'word-chain-ko',
+  //   name:              '끝말잇기 (한글)',
+  //   icon:              '🔗',
+  //   description:       '컴퓨터와 끝말잇기 대결! 제한 시간 안에 단어를 이어 목표 개수를 달성하세요. 두음법칙도 인정됩니다.',
+  //   duration:          '약 3분',
+  //   color:             'bg-lime-500',
+  //   component:         WordChainGame,
+  //   defaultDailyLimit: 5,
+  //   defaultPoints:     10,
+  // },
+  // {
+  //   id:                'word-chain-en',
+  //   name:              'Word Chain (영어)',
+  //   icon:              '🔠',
+  //   description:       '영어 끝말잇기! 단어의 마지막 알파벳으로 시작하는 단어를 제한 시간 안에 이어가세요.',
+  //   duration:          '약 3분',
+  //   color:             'bg-sky-500',
+  //   component:         WordChainGameEn,
+  //   defaultDailyLimit: 5,
+  //   defaultPoints:     10,
+  // },
   {
     id:                'ladybug',
     name:              '무당벌레 무늬',
