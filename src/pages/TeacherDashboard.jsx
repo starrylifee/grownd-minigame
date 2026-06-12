@@ -60,6 +60,9 @@ function formatRoundResult(gameId, round) {
     if (r >= 0.33) return '🎉 10단계 클리어'
     return `${round.score ?? 0}단계`
   }
+  if (gameId === 'word-chain-ko' || gameId === 'word-chain-en') {
+    return `${round.score ?? 0}단어`
+  }
   return `${Math.round((round.scoreRatio ?? 0) * 100)}%`
 }
 
@@ -79,6 +82,9 @@ function formatActivity(gameId, entry) {
     if (r >= 0.66) return '⭐ 15단계'
     if (r >= 0.33) return '🎉 10단계'
     return `${entry.score ?? 0}단계`
+  }
+  if (gameId === 'word-chain-ko' || gameId === 'word-chain-en') {
+    return `${entry.score ?? 0}단어`
   }
   return `${Math.round((entry.scoreRatio ?? 0) * 100)}%`
 }
@@ -105,6 +111,9 @@ function defaultSettingsFor(game) {
   }
   if (game.id === 'word-typing') return { ...base, typingLevel: 1 }
   if (game.id === 'typing')      return { ...base, typingLevel: 1 }
+  if (game.id === 'word-chain-ko' || game.id === 'word-chain-en') {
+    return { ...base, chainTimer: 20, chainTarget: 10 }
+  }
   if (game.id === 'math-quiz')   return { ...base, mathType: 'single-add' }
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
   if (game.id === 'space-docking') return {
@@ -711,6 +720,53 @@ export default function TeacherDashboard() {
                       <span className="text-sm font-medium">{label}</span>
                     </label>
                   ))}
+                </div>
+              )}
+
+              {/* ── 끝말잇기 설정 ── */}
+              {(selectedGameId === 'word-chain-ko' || selectedGameId === 'word-chain-en') && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
+                  <p className="font-bold text-sm">🔗 끝말잇기 설정</p>
+                  <div>
+                    <label className="block text-xs font-bold text-carnival-navy/50 mb-1">
+                      ⏱️ 타이핑 타이머 (난이도) — 턴당 제한 시간
+                    </label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { sec: 30, label: '🐢 여유', desc: '30초' },
+                        { sec: 20, label: '🙂 보통', desc: '20초' },
+                        { sec: 12, label: '🏃 빠름', desc: '12초' },
+                        { sec: 8,  label: '🔥 도전', desc: '8초' },
+                      ].map(({ sec, label, desc }) => (
+                        <label key={sec}
+                          className={`flex flex-col items-center px-2 py-2 rounded-xl cursor-pointer border text-xs font-bold transition-all ${
+                            (selectedS.chainTimer ?? 20) === sec
+                              ? 'border-lime-500 bg-lime-100 text-lime-700'
+                              : 'border-gray-100 bg-white text-carnival-navy/60'}`}>
+                          <input
+                            type="radio"
+                            name={`chainTimer-${selectedGameId}`}
+                            checked={(selectedS.chainTimer ?? 20) === sec}
+                            onChange={() => updateGameSetting(selectedGameId, 'chainTimer', sec)}
+                            className="sr-only"
+                          />
+                          <span>{label}</span>
+                          <span className="text-[10px] opacity-70">{desc}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-carnival-navy/50 mb-1">
+                      🎯 목표 단어 수 — 이 개수를 이으면 점수 지급
+                    </label>
+                    <input
+                      type="number" min="3" max="30"
+                      value={selectedS.chainTarget ?? 10}
+                      onChange={e => updateGameSetting(selectedGameId, 'chainTarget', Number(e.target.value))}
+                      className="input-field text-sm py-2 w-28 text-center"
+                    />
+                  </div>
                 </div>
               )}
 

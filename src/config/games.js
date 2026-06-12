@@ -11,6 +11,12 @@ import MathQuiz          from '../pages/games/MathQuiz'
 import RaidTypingGame    from '../pages/games/RaidTypingGame'
 import VocabGame         from '../pages/games/VocabGame'
 import CountryQuizGame   from '../pages/games/CountryQuizGame'
+import CountryQuizGame2  from '../pages/games/CountryQuizGame2'
+import FlagQuizGame      from '../pages/games/FlagQuizGame'
+import ProverbChosungGame from '../pages/games/ProverbChosungGame'
+import WordMeaningGame   from '../pages/games/WordMeaningGame'
+import WordChainGame     from '../pages/games/WordChainGame'
+import WordChainGameEn   from '../pages/games/WordChainGameEn'
 import LadybugGame       from '../pages/games/LadybugGame'
 import SpaceDockingGame  from '../pages/games/SpaceDockingGame'
 import ShapeRotationGame from '../pages/games/ShapeRotationGame'
@@ -68,6 +74,72 @@ export const GAMES = [
     duration:          '약 3분',
     color:             'bg-emerald-400',
     component:         CountryQuizGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'country-quiz-2',
+    name:              '나라 수도 2',
+    icon:              '🗺️',
+    description:       '나라 수도 퀴즈 두 번째 세트! 새로운 나라들의 수도를 맞혀보세요.',
+    duration:          '약 3분',
+    color:             'bg-teal-400',
+    component:         CountryQuizGame2,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'flag-quiz',
+    name:              '국기 퀴즈',
+    icon:              '🚩',
+    description:       '국기만 보고 어느 나라인지 맞혀보세요! 100여 개 나라의 국기가 출제됩니다.',
+    duration:          '약 3분',
+    color:             'bg-rose-400',
+    component:         FlagQuizGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'proverb-chosung',
+    name:              '속담 초성 퀴즈',
+    icon:              '📜',
+    description:       '초성만 보고 속담을 완성하세요! 막히면 뜻과 첫 글자 힌트가 나와요.',
+    duration:          '약 4분',
+    color:             'bg-amber-400',
+    component:         ProverbChosungGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'word-meaning',
+    name:              '동형어·다의어',
+    icon:              '📚',
+    description:       '두 문장 속 같은 낱말이 동형어(동음이의어)인지 다의어인지 맞혀보세요!',
+    duration:          '약 3분',
+    color:             'bg-indigo-400',
+    component:         WordMeaningGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'word-chain-ko',
+    name:              '끝말잇기 (한글)',
+    icon:              '🔗',
+    description:       '컴퓨터와 끝말잇기 대결! 제한 시간 안에 단어를 이어 목표 개수를 달성하세요. 두음법칙도 인정됩니다.',
+    duration:          '약 3분',
+    color:             'bg-lime-500',
+    component:         WordChainGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'word-chain-en',
+    name:              'Word Chain (영어)',
+    icon:              '🔠',
+    description:       '영어 끝말잇기! 단어의 마지막 알파벳으로 시작하는 단어를 제한 시간 안에 이어가세요.',
+    duration:          '약 3분',
+    color:             'bg-sky-500',
+    component:         WordChainGameEn,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },

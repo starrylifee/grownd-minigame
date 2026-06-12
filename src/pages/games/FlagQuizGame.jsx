@@ -1,36 +1,38 @@
 /**
- * 🌍 나라 수도 퀴즈
+ * 🚩 국기 퀴즈
  *
  * [게임 방식]
- * - 10개 출제 → 오타 횟수 비례 감점 → 점수 확정
- * - 오답이 있었던 나라는 복습 라운드에서 다시 출제 (점수에 영향 없음)
- * - 힌트: 1회 오답 → 음절 수(___ 형태), 2회 오답 → 첫 글자 + ___
+ * - 국기만 보고 나라 이름을 입력 (SET 1 + SET 2 전체 풀에서 10개 출제)
+ * - 오타 횟수 비례 감점 → 점수 확정 (나라 수도 퀴즈와 동일)
+ * - 힌트: 1회 오답 → 글자 수(___ 형태), 2회 오답 → 첫 글자 공개 + 정답 표시
+ * - 다른 표기(예: 터키/튀르키예)는 COUNTRY_ALIASES로 모두 정답 처리
  */
 import { useState, useRef, useEffect } from 'react'
-import { COUNTRIES } from '../../data/countriesData'
+import { COUNTRIES, COUNTRIES_SET2, COUNTRY_ALIASES } from '../../data/countriesData'
 
 const TOTAL = 10
+const POOL  = [...COUNTRIES, ...COUNTRIES_SET2]
 
-function pickCountries(pool) {
-  const shuffled = [...pool].sort(() => Math.random() - 0.5)
+function pickItems() {
+  const shuffled = [...POOL].sort(() => Math.random() - 0.5)
   return shuffled.slice(0, Math.min(TOTAL, shuffled.length))
 }
 
 function syllableHint(word, revealCount = 0) {
-  // revealCount: 앞에서 보여줄 글자 수
   return word
     .split('')
     .map((c, i) => i < revealCount ? c : '_')
     .join(' ')
 }
 
-export default function CountryQuizGame({
-  activity, onComplete, onExit,
-  countries = COUNTRIES,
-  title     = '🌍 나라 수도 퀴즈',
-  badge     = '세계 수도',
-}) {
-  const [items]    = useState(() => pickCountries(countries))
+function isCorrect(item, userAns) {
+  if (userAns === item.country) return true
+  const aliases = COUNTRY_ALIASES[item.country] || []
+  return aliases.includes(userAns)
+}
+
+export default function FlagQuizGame({ activity, onComplete, onExit }) {
+  const [items] = useState(() => pickItems())
 
   // 메인 게임
   const [idx, setIdx]               = useState(0)
@@ -63,10 +65,9 @@ export default function CountryQuizGame({
     e.preventDefault()
     if (feedback !== null || !current) return
 
-    const answer  = current.capital.trim()
     const userAns = input.trim()
 
-    if (userAns === answer) {
+    if (isCorrect(current, userAns)) {
       setFeedback('correct')
 
       if (isReview) {
@@ -144,7 +145,7 @@ export default function CountryQuizGame({
 
         {/* 헤더 */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-black text-carnival-navy">{title}</h1>
+          <h1 className="text-2xl font-black text-carnival-navy">🚩 국기 퀴즈</h1>
           <button onClick={onExit}
             className="text-sm text-carnival-navy/40 hover:text-carnival-coral transition-colors">
             나가기
@@ -153,8 +154,8 @@ export default function CountryQuizGame({
 
         {/* 배지 */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-green-300 bg-green-50 text-green-700 text-sm font-bold">
-            <span>🌐</span><span>{badge}</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-rose-300 bg-rose-50 text-rose-700 text-sm font-bold">
+            <span>🏳️</span><span>세계 국기</span>
           </div>
           {isReview && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-300 bg-amber-50 text-amber-700 text-sm font-bold animate-pulse">
@@ -174,7 +175,7 @@ export default function CountryQuizGame({
           </div>
           <div className="w-full bg-gray-100 rounded-full h-3">
             <div
-              className={`h-3 rounded-full transition-all duration-500 ${isReview ? 'bg-amber-400' : 'bg-green-400'}`}
+              className={`h-3 rounded-full transition-all duration-500 ${isReview ? 'bg-amber-400' : 'bg-rose-400'}`}
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -185,7 +186,7 @@ export default function CountryQuizGame({
           <div className="card text-center py-10 space-y-3">
             <div className="text-5xl">🎉</div>
             <p className="font-black text-xl text-carnival-navy">복습 완료!</p>
-            <p className="text-carnival-navy/50 text-sm">틀렸던 나라를 모두 맞혔어요</p>
+            <p className="text-carnival-navy/50 text-sm">틀렸던 국기를 모두 맞혔어요</p>
           </div>
         ) : (
           <>
@@ -195,18 +196,17 @@ export default function CountryQuizGame({
               feedback === 'wrong'   ? 'bg-red-50 border-red-300' : ''
             }`}>
               <p className="text-xs text-carnival-navy/40 mb-2 font-medium">
-                {isReview ? '복습' : `${idx + 1}번`} 나라
+                {isReview ? '복습' : `${idx + 1}번`} 국기
               </p>
-              <div className="text-6xl mb-3">{current?.flag}</div>
-              <p className="text-3xl font-black text-carnival-navy mb-1">{current?.country}</p>
-              <p className="text-xs text-carnival-navy/30 mb-2">이 나라의 수도는?</p>
+              <div className="text-8xl mb-3">{current?.flag}</div>
+              <p className="text-xs text-carnival-navy/30 mb-2">이 국기는 어느 나라일까요?</p>
 
               {/* 힌트 */}
               {feedback === null && currentWrong >= 1 && (
                 <p className="text-xs text-amber-500 mt-2 font-mono tracking-widest">
-                  힌트: {syllableHint(current.capital, currentWrong >= 2 ? 1 : 0)}
+                  힌트: {syllableHint(current.country, currentWrong >= 2 ? 1 : 0)}
                   {currentWrong >= 2 && (
-                    <span className="ml-1 text-amber-400">({current.capital.length}글자)</span>
+                    <span className="ml-1 text-amber-400">({current.country.length}글자)</span>
                   )}
                 </p>
               )}
@@ -223,7 +223,7 @@ export default function CountryQuizGame({
                 <p className="text-carnival-coral font-black text-xl">❌ 다시 시도!</p>
                 {currentWrong >= 2 && (
                   <p className="text-carnival-navy/50 text-sm mt-1">
-                    정답: <span className="font-bold text-carnival-navy">{current.capital}</span>
+                    정답: <span className="font-bold text-carnival-navy">{current.country}</span>
                   </p>
                 )}
               </div>
@@ -238,7 +238,7 @@ export default function CountryQuizGame({
                   onChange={e => setInput(e.target.value)}
                   onPaste={e => e.preventDefault()}
                   type="text"
-                  placeholder="수도 이름을 입력하세요"
+                  placeholder="나라 이름을 입력하세요"
                   autoComplete="off"
                   spellCheck="false"
                   className="input-field flex-1 text-xl text-center font-bold"
