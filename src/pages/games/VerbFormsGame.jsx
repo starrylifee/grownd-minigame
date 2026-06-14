@@ -19,7 +19,7 @@ function pickQuestions() {
   return shuffle(VERB_FORMS).slice(0, Math.min(TOTAL, VERB_FORMS.length))
 }
 
-const FORM_LABEL = { past: '과거형', pastParticiple: '과거분사형' }
+const FORM_LABEL = { past: '과거형(past)', pastParticiple: '과거분사형(past participle)' }
 
 // 전체 과거·과거분사 형태 풀 (유사 보기 채우기용)
 const ALL_FORMS = [...new Set(VERB_FORMS.flatMap(v => [v.past, v.pastParticiple]))]
