@@ -29,7 +29,7 @@ export const VERB_FORMS = [
   { present: 'fight',      past: 'fought',     pastParticiple: 'fought' },
   { present: 'forget',     past: 'forgot',     pastParticiple: 'forgotten' },
   { present: 'forgive',    past: 'forgave',    pastParticiple: 'forgiven' },
-  { present: 'get',        past: 'got',        pastParticiple: 'got / gotten' },
+  { present: 'get',        past: 'got',        pastParticiple: 'gotten' },
   { present: 'give',       past: 'gave',       pastParticiple: 'given' },
   { present: 'go',         past: 'went',       pastParticiple: 'gone' },
   { present: 'grow',       past: 'grew',       pastParticiple: 'grown' },
