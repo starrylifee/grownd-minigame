@@ -4,14 +4,20 @@
  * [게임 방식]
  * - 속담의 초성(띄어쓰기 포함)을 보고 전체 속담을 입력 (8개 출제)
  * - 채점은 띄어쓰기를 무시하고 비교
- * - 오타 횟수 비례 감점: 1점 → 0.8 → 0.6 → 0.4(최저)
- * - 힌트: 1회 오답 → 속담의 뜻 공개, 2회 오답 → 각 어절의 첫 글자 공개,
- *         3회 오답 → 정답 공개 (보고 따라 입력하며 학습)
+ * - 힌트 사용 시 감점 (힌트를 봤으니 점수 차감):
+ *     0회 오답(힌트 X) → 1.0
+ *     1회 오답(뜻 공개)  → 0.5  (−50%)
+ *     2회 오답(첫 글자)  → 0.4
+ *     3회+ 오답(정답 공개) → 0.3
  */
 import { useState, useRef, useEffect } from 'react'
 import { PROVERBS } from '../../data/proverbsData'
 
 const TOTAL = 8
+
+// 오답(=힌트 단계)별 획득 점수
+const HINT_SCORE = [1.0, 0.5, 0.4, 0.3]
+const scoreFor = wrong => HINT_SCORE[Math.min(wrong, HINT_SCORE.length - 1)]
 
 const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ']
 
@@ -65,7 +71,7 @@ export default function ProverbChosungGame({ activity, onComplete, onExit }) {
 
     if (normalize(input) === normalize(current.text)) {
       setFeedback('correct')
-      const partial  = Math.max(0.4, 1 - wrongCount * 0.2)
+      const partial  = scoreFor(wrongCount)
       const newScore = score + partial
       setScore(newScore)
 
@@ -159,10 +165,13 @@ export default function ProverbChosungGame({ activity, onComplete, onExit }) {
                 ))}
               </div>
 
-              {/* 힌트: 뜻 공개 */}
+              {/* 힌트: 뜻 공개 (감점 안내) */}
               {wrongCount >= 1 && (
                 <p className="text-sm text-amber-600 font-bold mt-2">
                   💡 뜻: {current.meaning}
+                  <span className="block text-xs text-amber-500/80 font-medium mt-0.5">
+                    (힌트를 봐서 이 문제는 최대 {Math.round(scoreFor(wrongCount) * 100)}% 점수)
+                  </span>
                 </p>
               )}
 

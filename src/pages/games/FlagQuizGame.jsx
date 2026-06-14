@@ -9,6 +9,7 @@
  */
 import { useState, useRef, useEffect } from 'react'
 import { COUNTRIES, COUNTRIES_SET2, COUNTRY_ALIASES } from '../../data/countriesData'
+import FlagImage from '../../components/FlagImage'
 
 const TOTAL = 10
 const POOL  = [...COUNTRIES, ...COUNTRIES_SET2]
@@ -198,7 +199,7 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
               <p className="text-xs text-carnival-navy/40 mb-2 font-medium">
                 {isReview ? '복습' : `${idx + 1}번`} 국기
               </p>
-              <div className="text-8xl mb-3">{current?.flag}</div>
+              <div className="mb-3 flex justify-center"><FlagImage flag={current?.flag} className="h-28 w-auto" /></div>
               <p className="text-xs text-carnival-navy/30 mb-2">이 국기는 어느 나라일까요?</p>
 
               {/* 힌트 */}
