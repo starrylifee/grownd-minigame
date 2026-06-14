@@ -80,15 +80,15 @@ export async function saveOXQuestions(classCode, questions) {
 }
 
 // ── 일일 플레이 횟수 추적 ─────────────────────────────────
-function todayKST() {
+export function todayKST() {
   // UTC+9 기준 날짜 YYYY-MM-DD
   const now = new Date()
   const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000)
   return kst.toISOString().slice(0, 10)
 }
 
-function playLogId(classCode, gameId, studentCode) {
-  return `${classCode}_${gameId}_${studentCode}_${todayKST()}`
+function playLogId(classCode, gameId, studentCode, date = todayKST()) {
+  return `${classCode}_${gameId}_${studentCode}_${date}`
 }
 
 export async function getTodayPlayCount(classCode, gameId, studentCode) {
@@ -101,8 +101,8 @@ export async function savePlayRound(classCode, gameId, studentCode, roundData) {
   await setDoc(ref, { rounds: arrayUnion({ ts: Date.now(), ...roundData }) }, { merge: true })
 }
 
-export async function getStudentRounds(classCode, gameId, studentCode) {
-  const snap = await getDoc(doc(db, 'playLogs', playLogId(classCode, gameId, studentCode)))
+export async function getStudentRounds(classCode, gameId, studentCode, date = todayKST()) {
+  const snap = await getDoc(doc(db, 'playLogs', playLogId(classCode, gameId, studentCode, date)))
   return snap.exists() ? (snap.data().rounds || []) : []
 }
 
@@ -154,8 +154,8 @@ export function subscribeToRaidBoss(classCode, callback) {
 }
 
 // ── 당일 리더보드 ────────────────────────────────────────────
-function scoreLogId(classCode, gameId) {
-  return `${classCode}_${gameId}_${todayKST()}`
+function scoreLogId(classCode, gameId, date = todayKST()) {
+  return `${classCode}_${gameId}_${date}`
 }
 
 /**
@@ -190,8 +190,8 @@ export async function saveGameScore(classCode, gameId, studentCode, studentName,
  * 오늘의 리더보드를 가져옵니다.
  * @returns {{ studentCode: string, name: string, scoreRatio: number, points: number }[]}
  */
-export async function getTodayLeaderboard(classCode, gameId) {
-  const snap = await getDoc(doc(db, 'scoreLogs', scoreLogId(classCode, gameId)))
+export async function getTodayLeaderboard(classCode, gameId, date = todayKST()) {
+  const snap = await getDoc(doc(db, 'scoreLogs', scoreLogId(classCode, gameId, date)))
   if (!snap.exists()) return []
   const entries = Object.entries(snap.data())
     .map(([code, v]) => ({ studentCode: code, ...v }))

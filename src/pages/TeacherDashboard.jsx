@@ -7,7 +7,7 @@ import {
   getTeacher, saveTeacher, getClass, saveClass,
   saveActivity, getActivity, hashPassword,
   getRaidBoss, resetRaidBoss, getTodayLeaderboard,
-  getStudentRounds,
+  getStudentRounds, todayKST,
 } from '../lib/firestore'
 import { GAMES } from '../config/games'
 import { VOCAB_UNIT_NAMES } from '../data/vocabData'
@@ -50,6 +50,7 @@ function formatRoundResult(gameId, round) {
     return round.scoreRatio >= 1.5 ? `🏆 ${dmg}` : `⚔️ ${dmg}`
   }
   if (gameId === 'math-quiz') return `${Math.round((round.scoreRatio ?? 0) * 10)}/10`
+  if (gameId === 'verb-forms') return `${round.score ?? 0}/10`
   if (gameId === 'word-typing' || gameId === 'typing') {
     return round.completionTime ? formatTime(round.completionTime) : '완료'
   }
@@ -73,6 +74,7 @@ function formatActivity(gameId, entry) {
     return entry.scoreRatio >= 1.5 ? `🏆 ${dmg}` : `⚔️ ${dmg}`
   }
   if (gameId === 'math-quiz') return `${Math.round((entry.scoreRatio ?? 0) * 10)}/10`
+  if (gameId === 'verb-forms') return `${entry.score ?? 0}/10`
   if (gameId === 'word-typing' || gameId === 'typing') {
     return entry.completionTime ? formatTime(entry.completionTime) : '완료'
   }
@@ -115,6 +117,7 @@ function defaultSettingsFor(game) {
     return { ...base, chainTimer: 20, chainTarget: 10 }
   }
   if (game.id === 'math-quiz')   return { ...base, mathType: 'single-add' }
+  if (game.id === 'verb-forms')  return { ...base, verbMode: 'mc' }
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
   if (game.id === 'space-docking') return {
     ...base,
@@ -168,13 +171,16 @@ export default function TeacherDashboard() {
   // 학생 활동
   const [activityMap, setActivityMap]       = useState({})  // { studentCode: { gameId: entry } }
   const [activityLoading, setActivityLoading] = useState(false)
+  const [activityDate, setActivityDate]     = useState(todayKST())  // 조회 일자 (YYYY-MM-DD)
 
   // 회차별 상세 모달
   const [roundModal, setRoundModal] = useState(null) // { studentNum, studentName, game, rounds, loading }
 
+  const isToday = activityDate === todayKST()
+
   async function openRoundModal(num, name, game) {
     setRoundModal({ studentNum: num, studentName: name, game, rounds: [], loading: true })
-    const rounds = await getStudentRounds(classCode, game.id, num)
+    const rounds = await getStudentRounds(classCode, game.id, num, activityDate)
     setRoundModal(prev => prev ? { ...prev, rounds, loading: false } : null)
   }
 
@@ -211,26 +217,12 @@ export default function TeacherDashboard() {
     loadClass()
   }, [classCode])
 
-  // 학생 활동 탭 로드
+  // 학생 활동 탭 로드 (탭/학급/일자 변경 시)
   useEffect(() => {
     if (tab !== 3 || !classCode) return
-    async function loadActivity() {
-      setActivityLoading(true)
-      const map = {}
-      await Promise.all(GAMES.map(async game => {
-        try {
-          const entries = await getTodayLeaderboard(classCode, game.id)
-          entries.forEach(entry => {
-            if (!map[entry.studentCode]) map[entry.studentCode] = {}
-            map[entry.studentCode][game.id] = entry
-          })
-        } catch {}
-      }))
-      setActivityMap(map)
-      setActivityLoading(false)
-    }
-    loadActivity()
-  }, [tab, classCode])
+    reloadActivity()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, classCode, activityDate])
 
   function flash(text) {
     setMsg(text)
@@ -351,7 +343,7 @@ export default function TeacherDashboard() {
     const map = {}
     await Promise.all(GAMES.map(async game => {
       try {
-        const entries = await getTodayLeaderboard(classCode, game.id)
+        const entries = await getTodayLeaderboard(classCode, game.id, activityDate)
         entries.forEach(entry => {
           if (!map[entry.studentCode]) map[entry.studentCode] = {}
           map[entry.studentCode][game.id] = entry
@@ -723,6 +715,32 @@ export default function TeacherDashboard() {
                 </div>
               )}
 
+              {/* ── 동사 변화 난이도 ── */}
+              {selectedGameId === 'verb-forms' && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-2">
+                  <p className="font-bold text-sm">🔁 난이도 설정</p>
+                  {[
+                    { key: 'mc',     label: '🔘 객관식 — 보기 중 알맞은 과거·과거분사형 선택 (쉬움)' },
+                    { key: 'typing', label: '⌨️ 타이핑 — 과거·과거분사형 직접 입력 (어려움)' },
+                  ].map(({ key, label }) => (
+                    <label key={key}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all ${
+                        (selectedS.verbMode || 'mc') === key
+                          ? 'border-fuchsia-400 bg-fuchsia-50'
+                          : 'border-gray-100 bg-white'}`}>
+                      <input
+                        type="radio"
+                        name="verbMode"
+                        checked={(selectedS.verbMode || 'mc') === key}
+                        onChange={() => updateGameSetting('verb-forms', 'verbMode', key)}
+                        className="accent-fuchsia-500"
+                      />
+                      <span className="text-sm font-medium">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
               {/* ── 끝말잇기 설정 ── */}
               {(selectedGameId === 'word-chain-ko' || selectedGameId === 'word-chain-en') && (
                 <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
@@ -916,7 +934,7 @@ export default function TeacherDashboard() {
           ) : (
             <div className="card space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-black text-lg">📊 오늘의 학생 활동</h2>
+                <h2 className="font-black text-lg">📊 {isToday ? '오늘의' : ''} 학생 활동</h2>
                 <button
                   onClick={reloadActivity}
                   disabled={activityLoading}
@@ -924,6 +942,26 @@ export default function TeacherDashboard() {
                 >
                   {activityLoading ? '로딩 중...' : '🔄 새로고침'}
                 </button>
+              </div>
+
+              {/* 일자 선택 */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="text-xs font-bold text-carnival-navy/50">📅 조회 일자</label>
+                <input
+                  type="date"
+                  value={activityDate}
+                  max={todayKST()}
+                  onChange={e => setActivityDate(e.target.value || todayKST())}
+                  className="input-field text-sm py-1.5 w-auto"
+                />
+                {!isToday && (
+                  <button
+                    onClick={() => setActivityDate(todayKST())}
+                    className="text-xs font-bold text-carnival-sky hover:underline"
+                  >
+                    오늘로
+                  </button>
+                )}
               </div>
 
               {/* 게임 범례 */}
@@ -961,7 +999,7 @@ export default function TeacherDashboard() {
                               </span>
                             </div>
                             {!hasAny && (
-                              <span className="text-xs text-gray-300">오늘 플레이 없음</span>
+                              <span className="text-xs text-gray-300">{isToday ? '오늘 ' : ''}플레이 없음</span>
                             )}
                           </div>
 
@@ -1039,7 +1077,7 @@ export default function TeacherDashboard() {
                 </div>
                 <div>
                   <p className="font-black text-carnival-navy text-sm">{roundModal.studentNum}번 {roundModal.studentName}</p>
-                  <p className="text-xs text-carnival-navy/40">{roundModal.game.name} 회차 기록</p>
+                  <p className="text-xs text-carnival-navy/40">{roundModal.game.name} 회차 기록 · {activityDate}</p>
                 </div>
               </div>
               <button
@@ -1053,7 +1091,7 @@ export default function TeacherDashboard() {
             {roundModal.loading ? (
               <div className="text-center py-6 text-2xl animate-bounce-slow">🎡</div>
             ) : roundModal.rounds.length === 0 ? (
-              <p className="text-center text-carnival-navy/30 py-6 text-sm">오늘 플레이 기록이 없습니다</p>
+              <p className="text-center text-carnival-navy/30 py-6 text-sm">{isToday ? '오늘 ' : '해당 일자에 '}플레이 기록이 없습니다</p>
             ) : (
               <div className="space-y-2">
                 {[...roundModal.rounds]
