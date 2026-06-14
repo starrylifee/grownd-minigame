@@ -51,7 +51,7 @@ export default function CountryQuizGame({
   const inputRef      = useRef(null)
   const startTimeRef  = useRef(Date.now())
 
-  useEffect(() => { inputRef.current?.focus() }, [idx, reviewIdx, isReview])
+  useEffect(() => { if (feedback === null) inputRef.current?.focus() }, [idx, reviewIdx, isReview, feedback])
 
   const current  = isReview ? reviewItems[reviewIdx] : items[idx]
   const progress = isReview

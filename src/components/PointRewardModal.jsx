@@ -9,6 +9,15 @@ export default function PointRewardModal({ points, message, onClose }) {
     return () => clearTimeout(t)
   }, [])
 
+  // Enter / Space 로도 닫기 (게임 중 엔터 흐름 그대로 이어지도록)
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClose() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
       <div

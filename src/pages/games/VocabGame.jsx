@@ -39,7 +39,7 @@ export default function VocabGame({ activity, onComplete, onExit }) {
   const inputRef     = useRef(null)
   const startTimeRef = useRef(Date.now())
 
-  useEffect(() => { inputRef.current?.focus() }, [idx, reviewIdx, isReview])
+  useEffect(() => { if (feedback === null) inputRef.current?.focus() }, [idx, reviewIdx, isReview, feedback])
 
   const currentWord = isReview ? reviewWords[reviewIdx] : words[idx]
   const progress    = isReview

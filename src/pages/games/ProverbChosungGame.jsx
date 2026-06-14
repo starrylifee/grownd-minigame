@@ -51,7 +51,7 @@ export default function ProverbChosungGame({ activity, onComplete, onExit }) {
   const inputRef     = useRef(null)
   const startTimeRef = useRef(Date.now())
 
-  useEffect(() => { inputRef.current?.focus() }, [idx])
+  useEffect(() => { if (feedback === null) inputRef.current?.focus() }, [idx, feedback])
 
   const current  = items[idx]
   const progress = (idx / items.length) * 100

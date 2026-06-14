@@ -53,7 +53,8 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
   const inputRef      = useRef(null)
   const startTimeRef  = useRef(Date.now())
 
-  useEffect(() => { inputRef.current?.focus() }, [idx, reviewIdx, isReview])
+  // 입력창 자동 포커스 — 문제 전환·오답 후 입력창이 다시 뜰 때마다 커서 복귀
+  useEffect(() => { if (feedback === null) inputRef.current?.focus() }, [idx, reviewIdx, isReview, feedback])
 
   const current  = isReview ? reviewItems[reviewIdx] : items[idx]
   const progress = isReview
@@ -202,13 +203,18 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
               <div className="mb-3 flex justify-center"><FlagImage flag={current?.flag} className="h-28 w-auto" /></div>
               <p className="text-xs text-carnival-navy/30 mb-2">이 국기는 어느 나라일까요?</p>
 
-              {/* 힌트 */}
-              {feedback === null && currentWrong >= 1 && (
+              {/* 힌트: 1회 오답 → 글자 수 */}
+              {feedback === null && currentWrong === 1 && (
                 <p className="text-xs text-amber-500 mt-2 font-mono tracking-widest">
-                  힌트: {syllableHint(current.country, currentWrong >= 2 ? 1 : 0)}
-                  {currentWrong >= 2 && (
-                    <span className="ml-1 text-amber-400">({current.country.length}글자)</span>
-                  )}
+                  힌트: {syllableHint(current.country, 0)}
+                </p>
+              )}
+
+              {/* 정답 공개: 2회 오답부터 계속 표시 (보고 따라 입력) */}
+              {currentWrong >= 2 && (
+                <p className="text-sm text-carnival-navy/60 mt-2">
+                  정답: <span className="font-bold text-carnival-navy">{current.country}</span>
+                  <span className="text-xs text-carnival-navy/30 ml-1">({current.country.length}글자)</span>
                 </p>
               )}
             </div>
@@ -222,11 +228,6 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
             {feedback === 'wrong' && (
               <div className="text-center mb-4">
                 <p className="text-carnival-coral font-black text-xl">❌ 다시 시도!</p>
-                {currentWrong >= 2 && (
-                  <p className="text-carnival-navy/50 text-sm mt-1">
-                    정답: <span className="font-bold text-carnival-navy">{current.country}</span>
-                  </p>
-                )}
               </div>
             )}
 
