@@ -157,7 +157,7 @@ export const COUNTRY_ALIASES = {
  * 국기 이모지(지역표시문자 2개) → ISO 3166-1 alpha-2 소문자 코드
  *   '🇯🇵' → 'jp', '🇵🇬' → 'pg'
  * Windows는 국기 이모지를 글리프로 못 그려 코드 텍스트(JP, PG)로 보이므로,
- * 이 코드로 flagcdn 이미지를 불러와 OS와 무관하게 국기를 표시한다.
+ * 이 코드로 번들된 flag-icons SVG를 그려 OS와 무관하게 국기를 표시한다.
  */
 export function flagToCode(flag) {
   if (!flag) return ''
