@@ -229,6 +229,14 @@ export default function TeacherDashboard() {
     setTimeout(() => setMsg(''), 2500)
   }
 
+  // 학생/활동을 저장할 때마다 교사 문서에도 학급 링크를 동기화한다.
+  // (학급설정 '저장' 버튼을 누르지 않고 학생만 등록하면 teachers/{uid}에
+  //  classCode가 남지 않아, 재로그인 시 학급을 못 찾고 초기화된 것처럼 보이던 문제 방지)
+  async function linkClassToTeacher() {
+    if (!teacher || !classCode) return
+    await saveTeacher(teacher.uid, { classCode, className })
+  }
+
   async function saveSettings() {
     setSaving(true)
     await saveTeacher(teacher.uid, { growndApiKey: apiKey, growndClassId: classId, classCode, className })
@@ -243,6 +251,7 @@ export default function TeacherDashboard() {
     const updated = { ...students, [newNum]: { name: newName, passwordHash: hash } }
     setStudents(updated)
     await saveClass(classCode, { teacherUid: teacher.uid, className, students: updated })
+    await linkClassToTeacher()
     setNewNum(''); setNewName(''); setNewPw('')
     flash('✅ 학생이 추가되었습니다!')
   }
@@ -267,6 +276,7 @@ export default function TeacherDashboard() {
     }
     setStudents(updated)
     await saveClass(classCode, { teacherUid: teacher.uid, className, students: updated })
+    await linkClassToTeacher()
     setBulkText('')
     flash(`✅ ${parsed.length}명의 학생이 추가되었습니다!`)
     setSaving(false)
@@ -277,6 +287,7 @@ export default function TeacherDashboard() {
     delete updated[num]
     setStudents(updated)
     await saveClass(classCode, { teacherUid: teacher.uid, className, students: updated })
+    await linkClassToTeacher()
   }
 
   function updateGameSetting(gameId, field, value) {
@@ -298,6 +309,7 @@ export default function TeacherDashboard() {
     const newS     = { ...gameSettings[gameId], enabled: newVal }
     setGameSettings(prev => ({ ...prev, [gameId]: newS }))
     await saveActivity(classCode, gameId, { name: game.name, ...newS })
+    await linkClassToTeacher()
   }
 
   // 개별 게임 저장
@@ -311,6 +323,7 @@ export default function TeacherDashboard() {
       s.pointsPerCompletion = (s.milestone10 ?? 5) + (s.milestone15 ?? 5) + (s.milestone20 ?? 5)
     }
     if (s) await saveActivity(classCode, gameId, { name: game.name, ...s })
+    await linkClassToTeacher()
     flash('✅ 저장되었습니다!')
     setSaving(false)
   }
