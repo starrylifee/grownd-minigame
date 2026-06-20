@@ -24,6 +24,11 @@ function formatScore(gameId, scoreRatio, completionTime, score) {
     const time    = completionTime ? ` · ${formatTime(completionTime)}` : ''
     return `${correct}/10${time}`
   }
+  if (gameId === 'operator-order') {
+    // 연산 순서는 5문제 올오어낫싱 — 통과 여부 + 시간 표시
+    const time = completionTime ? ` · ${formatTime(completionTime)}` : ''
+    return scoreRatio >= 1 ? `🎉 통과${time}` : `${Math.round(scoreRatio * 5)}/5`
+  }
   if (gameId === 'word-typing' || gameId === 'typing') {
     // 낱말/문장 타자는 scoreRatio가 항상 1.0이므로 시간만 표시
     return completionTime ? formatTime(completionTime) : '완료'

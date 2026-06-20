@@ -16,6 +16,7 @@ import FlagQuizGame      from '../pages/games/FlagQuizGame'
 import ProverbChosungGame from '../pages/games/ProverbChosungGame'
 import WordMeaningGame   from '../pages/games/WordMeaningGame'
 import VerbFormsGame     from '../pages/games/VerbFormsGame'
+import OperatorOrderGame from '../pages/games/OperatorOrderGame'
 // 레거시: 끝말잇기 (학생 난이도 문제로 비공개, 코드는 보존)
 // import WordChainGame     from '../pages/games/WordChainGame'
 // import WordChainGameEn   from '../pages/games/WordChainGameEn'
@@ -131,6 +132,17 @@ export const GAMES = [
     duration:          '약 3분',
     color:             'bg-fuchsia-400',
     component:         VerbFormsGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'operator-order',
+    name:              '연산 순서',
+    icon:              '🧮',
+    description:       '식을 계산하는 순서대로 연산자를 클릭하세요! 5문제를 모두 맞혀야 포인트를 받아요.',
+    duration:          '약 3분',
+    color:             'bg-cyan-500',
+    component:         OperatorOrderGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },

@@ -118,6 +118,7 @@ function defaultSettingsFor(game) {
   }
   if (game.id === 'math-quiz')   return { ...base, mathType: 'single-add' }
   if (game.id === 'verb-forms')  return { ...base, verbMode: 'mc' }
+  if (game.id === 'operator-order') return { ...base, opOrderLevel: 1 }
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
   if (game.id === 'space-docking') return {
     ...base,
@@ -747,6 +748,34 @@ export default function TeacherDashboard() {
                         checked={(selectedS.verbMode || 'mc') === key}
                         onChange={() => updateGameSetting('verb-forms', 'verbMode', key)}
                         className="accent-fuchsia-500"
+                      />
+                      <span className="text-sm font-medium">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* ── 연산 순서 난이도 ── */}
+              {selectedGameId === 'operator-order' && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-2">
+                  <p className="font-bold text-sm">🧮 난이도 설정</p>
+                  {[
+                    { key: 1,     label: '🟢 쉬움 — 괄호 1개 (문제당 20초)' },
+                    { key: 2,     label: '🟡 보통 — 괄호 위치 다양 (문제당 25초)' },
+                    { key: 3,     label: '🔴 어려움 — 괄호 안 2연산 (문제당 30초)' },
+                    { key: 'all', label: '🎲 전체 — 모든 난이도 섞기' },
+                  ].map(({ key, label }) => (
+                    <label key={key}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all ${
+                        (selectedS.opOrderLevel ?? 1) === key
+                          ? 'border-cyan-400 bg-cyan-50'
+                          : 'border-gray-100 bg-white'}`}>
+                      <input
+                        type="radio"
+                        name="opOrderLevel"
+                        checked={(selectedS.opOrderLevel ?? 1) === key}
+                        onChange={() => updateGameSetting('operator-order', 'opOrderLevel', key)}
+                        className="accent-cyan-500"
                       />
                       <span className="text-sm font-medium">{label}</span>
                     </label>
