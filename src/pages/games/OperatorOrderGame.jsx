@@ -124,21 +124,24 @@ export default function OperatorOrderGame({ activity, onComplete, onExit }) {
     setStatus('timeout')
   }, [timeLeft, status])
 
-  // ③ 판정 후 다음 문제로 이동
+  // ③ 판정 후 다음 문제로 이동 (실패 시 올오어낫싱 → 즉시 종료)
   useEffect(() => {
     if (status === null) return
     const delay = status === 'success' ? 900 : 1700
     const id = setTimeout(() => {
+      const finalCorrect  = correctRef.current
+      const completionTime = Math.round((Date.now() - startTimeRef.current) / 1000)
+
+      // 한 문제라도 실패하면 남은 문제를 풀어도 포인트가 0 → 바로 종료
+      if (status !== 'success') {
+        onComplete({ score: finalCorrect, scoreRatio: 0, completionTime, passed: false })
+        return
+      }
+
       const next = idxRef.current + 1
-      const finalCorrect = correctRef.current
       if (next >= ROUNDS) {
-        const passed = finalCorrect === ROUNDS
-        onComplete({
-          score:          finalCorrect,
-          scoreRatio:     passed ? 1 : 0,
-          completionTime: Math.round((Date.now() - startTimeRef.current) / 1000),
-          passed,
-        })
+        // 여기 도달 = 5문제 전부 통과
+        onComplete({ score: finalCorrect, scoreRatio: 1, completionTime, passed: true })
       } else {
         setIdx(next)
       }
@@ -221,24 +224,28 @@ export default function OperatorOrderGame({ activity, onComplete, onExit }) {
           계산하는 <strong className="text-carnival-purple">순서대로</strong> 연산자를 눌러요!
         </p>
 
-        {/* 식 + 타이머 */}
-        <div className="card text-center mb-5 py-8 relative">
-          <div className="absolute top-4 right-4">
-            <TimerRing timeLeft={status !== null ? 0 : timeLeft} max={timerMax} />
-          </div>
+        {/* 타이머 (식 위 별도 줄 — 식과 겹치지 않게) */}
+        <div className="flex justify-end mb-2">
+          <TimerRing timeLeft={status !== null ? 0 : timeLeft} max={timerMax} />
+        </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-3 text-3xl font-black text-carnival-navy px-2 leading-relaxed">
+        {/* 식 (한 줄 고정) */}
+        <div className="card mb-5 py-7 px-2 overflow-hidden">
+          <div className="flex flex-nowrap items-center justify-center gap-x-1 font-black text-carnival-navy">
             {tokens.map((t, i) => {
               if (t.type === 'text') {
-                return <span key={i} className="whitespace-pre">{t.value}</span>
+                return (
+                  <span key={i} className="whitespace-pre shrink-0 text-2xl sm:text-3xl">
+                    {t.value}
+                  </span>
+                )
               }
               const pStep   = pickedStepOf(t.opIndex)
               const isWrong = wrongIdx === t.opIndex
               const isFlash = flashIdx === t.opIndex
-              const isNext  = status === null && t.opIndex === expectedOpIndex
               const revealStep = showAnswer ? correctStepOf(t.opIndex) : null
 
-              let cls = 'relative inline-flex items-center justify-center w-12 h-12 rounded-xl border-2 font-black transition-all '
+              let cls = 'relative inline-flex shrink-0 items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-xl border-2 font-black text-xl sm:text-2xl transition-all '
               if (pStep) {
                 cls += 'bg-carnival-green text-white border-carnival-green '
               } else if (isFlash) {
@@ -247,8 +254,6 @@ export default function OperatorOrderGame({ activity, onComplete, onExit }) {
                 cls += 'bg-carnival-coral text-white border-carnival-coral animate-bounce '
               } else if (showAnswer) {
                 cls += 'bg-orange-100 text-orange-600 border-orange-300 '
-              } else if (isNext) {
-                cls += 'bg-white text-carnival-purple border-carnival-purple ring-2 ring-carnival-purple/30 hover:scale-105 '
               } else {
                 cls += 'bg-white text-carnival-navy border-gray-200 hover:border-carnival-purple hover:scale-105 '
               }
