@@ -18,7 +18,7 @@
  * [타이머]
  * - 문제당 제한 시간(난이도별). 초과 시 자동 실패 후 다음 문제.
  */
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { OPERATOR_ORDER_PROBLEMS, tokenizeDisplay } from '../../data/operatorOrderData'
 
 const ROUNDS = 5
@@ -101,6 +101,23 @@ export default function OperatorOrderGame({ activity, onComplete, onExit }) {
   // 타이머 콜백에서 최신 값 참조용
   const idxRef = useRef(idx); idxRef.current = idx
   const correctRef = useRef(correctCount); correctRef.current = correctCount
+
+  // 식이 카드 폭을 넘으면 한 줄 유지하며 자동 축소
+  const wrapRef = useRef(null)
+  const rowRef  = useRef(null)
+  const [scale, setScale] = useState(1)
+  useLayoutEffect(() => {
+    function fit() {
+      const wrap = wrapRef.current, row = rowRef.current
+      if (!wrap || !row) return
+      const avail   = wrap.clientWidth
+      const natural = row.scrollWidth   // transform 영향 없이 레이아웃 폭
+      setScale(natural > avail ? avail / natural : 1)
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [idx])
 
   // 새 문제 → 상태 초기화
   useEffect(() => {
@@ -229,13 +246,18 @@ export default function OperatorOrderGame({ activity, onComplete, onExit }) {
           <TimerRing timeLeft={status !== null ? 0 : timeLeft} max={timerMax} />
         </div>
 
-        {/* 식 (한 줄 고정) */}
-        <div className="card mb-5 py-7 px-2 overflow-hidden">
-          <div className="flex flex-nowrap items-center justify-center gap-x-1 font-black text-carnival-navy">
+        {/* 식 (한 줄 고정 — 폭 넘치면 자동 축소) */}
+        <div className="card mb-5 py-7 px-3">
+          <div ref={wrapRef} className="w-full flex justify-center">
+            <div
+              ref={rowRef}
+              style={{ transform: `scale(${scale})`, transformOrigin: 'center' }}
+              className="flex flex-nowrap items-center gap-x-1.5 font-black text-carnival-navy"
+            >
             {tokens.map((t, i) => {
               if (t.type === 'text') {
                 return (
-                  <span key={i} className="whitespace-pre shrink-0 text-2xl sm:text-3xl">
+                  <span key={i} className="whitespace-pre shrink-0 text-3xl">
                     {t.value}
                   </span>
                 )
@@ -245,7 +267,7 @@ export default function OperatorOrderGame({ activity, onComplete, onExit }) {
               const isFlash = flashIdx === t.opIndex
               const revealStep = showAnswer ? correctStepOf(t.opIndex) : null
 
-              let cls = 'relative inline-flex shrink-0 items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-xl border-2 font-black text-xl sm:text-2xl transition-all '
+              let cls = 'relative inline-flex shrink-0 items-center justify-center w-11 h-11 rounded-xl border-2 font-black text-2xl transition-all '
               if (pStep) {
                 cls += 'bg-carnival-green text-white border-carnival-green '
               } else if (isFlash) {
@@ -281,6 +303,7 @@ export default function OperatorOrderGame({ activity, onComplete, onExit }) {
                 </button>
               )
             })}
+            </div>
           </div>
         </div>
 
