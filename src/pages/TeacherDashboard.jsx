@@ -146,11 +146,18 @@ export default function TeacherDashboard() {
   const [saving, setSaving] = useState(false)
   const [msg, setMsg]       = useState('')
 
-  // 학급 설정
-  const [apiKey, setApiKey]       = useState('')
-  const [classId, setClassId]     = useState('')
-  const [classCode, setClassCode] = useState('')
-  const [className, setClassName] = useState('')
+  // 교사 학급 목록 / 활성 학급
+  const [classList, setClassList]       = useState([])  // [{ classCode, className, growndClassId }]
+  const [activeIdx, setActiveIdx]       = useState(-1)
+  const [addingClass, setAddingClass]   = useState(false)
+  const [newClassCode, setNewClassCode] = useState('')
+  const [newClassName, setNewClassName] = useState('')
+
+  // 활성 학급 설정
+  const [apiKey, setApiKey]               = useState('')       // API 키는 교사 단위(모든 학급 공용)
+  const [growndClassId, setGrowndClassId] = useState('')       // 그라운드 학급 ID는 학급 단위
+  const [classCode, setClassCode]         = useState('')
+  const [className, setClassName]         = useState('')
 
   // 학생 목록
   const [students, setStudents]   = useState({})
@@ -189,21 +196,48 @@ export default function TeacherDashboard() {
     if (!teacher) return
     async function load() {
       const teacherData = await getTeacher(teacher.uid)
-      if (teacherData) {
-        setApiKey(teacherData.growndApiKey    || '')
-        setClassId(teacherData.growndClassId  || '')
-        setClassCode(teacherData.classCode    || '')
-        setClassName(teacherData.className    || '')
+      if (!teacherData) { setClassList([]); applyActive([], -1); return }
+      setApiKey(teacherData.growndApiKey || '')
+
+      // 학급 목록: classes 배열 우선. 없으면 단일 학급 시절 필드에서 마이그레이션.
+      let list = Array.isArray(teacherData.classes) ? teacherData.classes : null
+      if (!list || !list.length) {
+        list = teacherData.classCode
+          ? [{
+              classCode:     teacherData.classCode,
+              className:     teacherData.className     || '',
+              growndClassId: teacherData.growndClassId || '',
+            }]
+          : []
       }
+      setClassList(list)
+
+      // 마지막으로 선택했던 학급을 복원 (없으면 첫 학급)
+      let idx = list.length ? 0 : -1
+      if (teacherData.activeClassCode) {
+        const i = list.findIndex(c => c.classCode === teacherData.activeClassCode)
+        if (i >= 0) idx = i
+      }
+      applyActive(list, idx)
     }
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teacher])
+
+  // 활성 학급(인덱스)을 적용해 관련 상태를 동기화한다.
+  function applyActive(list, idx) {
+    setActiveIdx(idx)
+    const c = list[idx]
+    setClassCode(c?.classCode || '')
+    setClassName(c?.className || '')
+    setGrowndClassId(c?.growndClassId || '')
+  }
 
   useEffect(() => {
     if (!classCode) return
     async function loadClass() {
       const classData = await getClass(classCode)
-      if (classData) setStudents(classData.students || {})
+      setStudents(classData?.students || {})  // 학급 전환 시 이전 학급 학생이 남지 않도록 항상 초기화
 
       const settings = {}
       for (const game of GAMES) {
@@ -230,18 +264,69 @@ export default function TeacherDashboard() {
     setTimeout(() => setMsg(''), 2500)
   }
 
-  // 학생/활동을 저장할 때마다 교사 문서에도 학급 링크를 동기화한다.
-  // (학급설정 '저장' 버튼을 누르지 않고 학생만 등록하면 teachers/{uid}에
-  //  classCode가 남지 않아, 재로그인 시 학급을 못 찾고 초기화된 것처럼 보이던 문제 방지)
+  // 학생/활동을 저장할 때마다 교사 문서의 학급 목록을 동기화한다.
+  // (학급설정 '저장' 버튼을 누르지 않고 학생만 등록해도 teachers/{uid}.classes에
+  //  현재 학급이 남도록 보장 → 재로그인 시 학급이 사라진 것처럼 보이던 문제 방지)
   async function linkClassToTeacher() {
     if (!teacher || !classCode) return
-    await saveTeacher(teacher.uid, { classCode, className })
+    let list = classList
+    if (!list.some(c => c.classCode === classCode)) {
+      list = [...list, { classCode, className, growndClassId }]
+      setClassList(list)
+      applyActive(list, list.length - 1)
+    }
+    await saveTeacher(teacher.uid, { classes: list, activeClassCode: classCode })
+  }
+
+  // 학급 전환
+  async function selectClass(idx) {
+    if (idx === activeIdx) return
+    applyActive(classList, idx)
+    setSelectedGameId(null)
+    const code = classList[idx]?.classCode
+    if (code) await saveTeacher(teacher.uid, { activeClassCode: code })
+  }
+
+  // 새 학급 추가
+  async function confirmAddClass() {
+    const code = newClassCode.trim()
+    const name = newClassName.trim()
+    if (!code) { flash('학급 코드를 입력하세요.'); return }
+    if (classList.some(c => c.classCode === code)) { flash('이미 등록된 학급 코드입니다.'); return }
+    setSaving(true)
+    const list = [...classList, { classCode: code, className: name, growndClassId: '' }]
+    setClassList(list)
+    await saveClass(code, { teacherUid: teacher.uid, className: name, students: {} })
+    await saveTeacher(teacher.uid, { classes: list, activeClassCode: code })
+    applyActive(list, list.length - 1)
+    setAddingClass(false); setNewClassCode(''); setNewClassName('')
+    setTab(0)
+    flash('✅ 학급이 추가되었습니다!')
+    setSaving(false)
+  }
+
+  // 학급을 목록에서 제거 (학생/활동 데이터는 보존)
+  async function deleteClass(idx) {
+    const entry = classList[idx]
+    if (!entry) return
+    if (!window.confirm(`'${entry.className || entry.classCode}' 학급을 목록에서 제거할까요?\n(학생·활동 데이터는 삭제되지 않으며, 같은 코드로 다시 추가하면 복구됩니다)`)) return
+    const list = classList.filter((_, i) => i !== idx)
+    setClassList(list)
+    const newIdx = list.length ? Math.min(idx, list.length - 1) : -1
+    applyActive(list, newIdx)
+    await saveTeacher(teacher.uid, { classes: list, activeClassCode: list[newIdx]?.classCode || '' })
+    flash('🗑️ 학급이 목록에서 제거되었습니다.')
   }
 
   async function saveSettings() {
+    if (!classCode) { flash('먼저 학급을 추가하세요.'); return }
     setSaving(true)
-    await saveTeacher(teacher.uid, { growndApiKey: apiKey, growndClassId: classId, classCode, className })
-    await saveClass(classCode, { teacherUid: teacher.uid, className, students })
+    // 활성 학급의 이름·그라운드 학급 ID 편집 내용을 목록에 반영
+    const list = classList.map((c, i) =>
+      i === activeIdx ? { ...c, className, growndClassId } : c)
+    setClassList(list)
+    await saveTeacher(teacher.uid, { growndApiKey: apiKey, classes: list, activeClassCode: classCode })
+    await saveClass(classCode, { teacherUid: teacher.uid, className, growndClassId, students })
     flash('✅ 저장되었습니다!')
     setSaving(false)
   }
@@ -389,7 +474,46 @@ export default function TeacherDashboard() {
         </button>
       </div>
 
-      <h1 className="text-2xl font-black text-carnival-navy mb-6">🎛️ 교사 대시보드</h1>
+      <h1 className="text-2xl font-black text-carnival-navy mb-4">🎛️ 교사 대시보드</h1>
+
+      {/* ── 학급 전환 바 ── */}
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        {classList.map((c, i) => (
+          <button key={c.classCode} onClick={() => selectClass(i)}
+            className={`px-3 py-1.5 rounded-full text-sm font-bold transition-all
+              ${i === activeIdx
+                ? 'bg-carnival-navy text-white shadow'
+                : 'bg-white text-carnival-navy/50 hover:bg-carnival-navy/10'}`}>
+            🏫 {c.className || c.classCode}
+          </button>
+        ))}
+        <button onClick={() => { setAddingClass(v => !v); setNewClassCode(''); setNewClassName('') }}
+          className="px-3 py-1.5 rounded-full text-sm font-bold border-2 border-dashed border-carnival-navy/20 text-carnival-navy/50 hover:border-carnival-sky hover:text-carnival-sky transition-all">
+          ＋ 학급 추가
+        </button>
+      </div>
+
+      {/* 새 학급 추가 폼 */}
+      {addingClass && (
+        <div className="card mb-4 space-y-3 border-2 border-carnival-sky/40">
+          <p className="font-bold text-sm">🏫 새 학급 추가</p>
+          <div className="flex gap-2">
+            <input value={newClassCode} onChange={e => setNewClassCode(e.target.value)}
+              placeholder="학급 코드 (예: class2025-4)" className="input-field flex-1 text-sm" autoCapitalize="none" />
+            <input value={newClassName} onChange={e => setNewClassName(e.target.value)}
+              placeholder="학급 이름 (예: 3학년 4반)" className="input-field flex-1 text-sm" />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={confirmAddClass} disabled={saving} className="btn-sky flex-1 text-sm py-2">
+              {saving ? '추가 중...' : '➕ 추가'}
+            </button>
+            <button onClick={() => setAddingClass(false)}
+              className="flex-1 text-sm py-2 rounded-2xl bg-gray-100 text-carnival-navy/50 font-bold">
+              취소
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 탭 */}
       <div className="flex gap-2 mb-6 flex-wrap">
@@ -416,24 +540,40 @@ export default function TeacherDashboard() {
         <div className="card space-y-4">
           <h2 className="font-black text-lg">📋 학급 설정</h2>
 
-          <div>
-            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">학급 코드 (학생 로그인용)</label>
-            <input value={classCode} onChange={e => setClassCode(e.target.value)}
-              placeholder="예: class2025-3" className="input-field" />
-            <p className="text-xs text-carnival-navy/30 mt-1">학생들이 로그인할 때 입력하는 코드입니다</p>
-          </div>
+          {!classCode ? (
+            <p className="text-sm text-carnival-coral">
+              위 <strong>＋ 학급 추가</strong> 버튼으로 학급을 먼저 만드세요. 학급은 2개 이상 추가할 수 있습니다.
+            </p>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-bold text-carnival-navy/60 mb-1">학급 코드 (학생 로그인용)</label>
+                <div className="input-field bg-gray-50 text-carnival-navy/60 font-mono">{classCode}</div>
+                <p className="text-xs text-carnival-navy/30 mt-1">
+                  학생들이 로그인할 때 입력하는 코드입니다. 코드를 바꾸려면 학급을 삭제 후 다시 추가하세요.
+                </p>
+              </div>
 
-          <div>
-            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">학급 이름</label>
-            <input value={className} onChange={e => setClassName(e.target.value)}
-              placeholder="예: 3학년 2반" className="input-field" />
-          </div>
+              <div>
+                <label className="block text-sm font-bold text-carnival-navy/60 mb-1">학급 이름</label>
+                <input value={className} onChange={e => setClassName(e.target.value)}
+                  placeholder="예: 3학년 2반" className="input-field" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-carnival-navy/60 mb-1">그라운드 학급 ID</label>
+                <input value={growndClassId} onChange={e => setGrowndClassId(e.target.value)}
+                  placeholder="그라운드카드 학급 ID" className="input-field" />
+                <p className="text-xs text-carnival-navy/30 mt-1">학급마다 다른 그라운드 학급 ID를 입력하세요</p>
+              </div>
+            </>
+          )}
 
           <hr className="border-gray-100" />
           <h3 className="font-bold text-carnival-navy/70">🌱 그라운드카드 연동</h3>
 
           <div>
-            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">API 키</label>
+            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">API 키 <span className="font-normal text-carnival-navy/30">(모든 학급 공용)</span></label>
             <input value={apiKey} onChange={e => setApiKey(e.target.value)}
               type="password" placeholder="growndcard.com에서 발급받은 API 키"
               className="input-field font-mono" />
@@ -442,15 +582,16 @@ export default function TeacherDashboard() {
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-bold text-carnival-navy/60 mb-1">그라운드 학급 ID</label>
-            <input value={classId} onChange={e => setClassId(e.target.value)}
-              placeholder="그라운드카드 학급 ID" className="input-field" />
-          </div>
-
-          <button onClick={saveSettings} disabled={saving} className="btn-primary w-full">
+          <button onClick={saveSettings} disabled={saving || !classCode} className="btn-primary w-full">
             {saving ? '저장 중...' : '💾 저장'}
           </button>
+
+          {classCode && (
+            <button onClick={() => deleteClass(activeIdx)}
+              className="w-full text-sm text-carnival-navy/30 hover:text-carnival-coral transition-colors py-1">
+              이 학급을 목록에서 제거
+            </button>
+          )}
         </div>
       )}
 

@@ -73,7 +73,10 @@ exports.awardPoints = onCall(
     if (!teacherSnap.exists) {
       throw new HttpsError('not-found', '교사 정보를 찾을 수 없습니다.')
     }
-    const { growndApiKey, growndClassId } = teacherSnap.data()
+    const { growndApiKey } = teacherSnap.data()
+    // 그라운드 학급 ID는 학급별 설정을 우선 사용하고, 없으면 교사 기본값으로 폴백한다.
+    // (단일 학급 시절 teachers/{uid}.growndClassId 에만 저장된 데이터 호환)
+    const growndClassId = classSnap.data().growndClassId || teacherSnap.data().growndClassId
 
     if (!growndApiKey || !growndClassId) {
       // API 키 미설정: 포인트 지급 없이 횟수만 차감하고 성공 처리
@@ -161,7 +164,8 @@ exports.dailyLeaderboardBonus = onSchedule(
       if (!teacherUid) continue
       const teacherSnap = await db.collection('teachers').doc(teacherUid).get()
       if (!teacherSnap.exists) continue
-      const { growndApiKey, growndClassId } = teacherSnap.data()
+      const { growndApiKey } = teacherSnap.data()
+      const growndClassId = classDoc.data().growndClassId || teacherSnap.data().growndClassId
       if (!growndApiKey || !growndClassId) continue
 
       const alreadyRewarded = new Set()
