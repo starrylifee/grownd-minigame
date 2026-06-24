@@ -40,9 +40,9 @@ function isCorrect(item, userAns) {
 }
 
 export default function FlagQuizGame({ activity, onComplete, onExit }) {
-  // 난이도 선택 (null = 아직 시작 전, 선택 화면 표시)
-  const [difficulty, setDifficulty] = useState(null)
-  const [items, setItems]           = useState([])
+  // 난이도 = 교사 설정 (activity.flagDifficulty). 기본값 'easy'(쉬움 50개국)
+  const difficulty = activity?.flagDifficulty === 'hard' ? 'hard' : 'easy'
+  const [items] = useState(() => pickItems(DIFFICULTIES[difficulty].pool))
 
   // 메인 게임
   const [idx, setIdx]               = useState(0)
@@ -60,13 +60,7 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
 
   const pendingResult = useRef(null)
   const inputRef      = useRef(null)
-  const startTimeRef  = useRef(null)
-
-  function startGame(level) {
-    setItems(pickItems(DIFFICULTIES[level].pool))
-    setDifficulty(level)
-    startTimeRef.current = Date.now()
-  }
+  const startTimeRef  = useRef(Date.now())
 
   // 입력창 자동 포커스 — 문제 전환·오답 후 입력창이 다시 뜰 때마다 커서 복귀
   useEffect(() => { if (feedback === null) inputRef.current?.focus() }, [idx, reviewIdx, isReview, feedback])
@@ -155,39 +149,6 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
       onComplete(pendingResult.current)
     }
   }, [isReview, reviewItems])
-
-  // 난이도 선택 화면
-  if (difficulty === null) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-black text-carnival-navy">🚩 국기 퀴즈</h1>
-            <button onClick={onExit}
-              className="text-sm text-carnival-navy/40 hover:text-carnival-coral transition-colors">
-              나가기
-            </button>
-          </div>
-          <p className="text-sm text-carnival-navy/50 mb-6">난이도를 골라주세요</p>
-
-          <div className="space-y-3">
-            {Object.entries(DIFFICULTIES).map(([key, d]) => (
-              <button key={key} onClick={() => startGame(key)}
-                className="card w-full text-left p-5 hover:border-rose-300 hover:bg-rose-50/40 transition-colors">
-                <div className="flex items-center gap-4">
-                  <span className="text-3xl">{d.icon}</span>
-                  <div>
-                    <p className="font-black text-lg text-carnival-navy">{d.label}</p>
-                    <p className="text-sm text-carnival-navy/50">{d.desc} 중 {TOTAL}개 출제</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">

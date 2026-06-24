@@ -13,6 +13,7 @@ import VocabGame         from '../pages/games/VocabGame'
 import CountryQuizGame   from '../pages/games/CountryQuizGame'
 import CountryQuizGame2  from '../pages/games/CountryQuizGame2'
 import FlagQuizGame      from '../pages/games/FlagQuizGame'
+import HistoryQuizGame    from '../pages/games/HistoryQuizGame'
 import ProverbChosungGame from '../pages/games/ProverbChosungGame'
 import WordMeaningGame   from '../pages/games/WordMeaningGame'
 import VerbFormsGame     from '../pages/games/VerbFormsGame'
@@ -95,10 +96,21 @@ export const GAMES = [
     id:                'flag-quiz',
     name:              '국기 퀴즈',
     icon:              '🚩',
-    description:       '국기만 보고 어느 나라인지 맞혀보세요! 난이도(쉬움 50개국·어려움 100여 개국)를 골라 도전할 수 있어요.',
+    description:       '국기만 보고 어느 나라인지 맞혀보세요! 교사가 난이도(쉬움 50개국·어려움 100여 개국)를 정할 수 있어요.',
     duration:          '약 3분',
     color:             'bg-rose-400',
     component:         FlagQuizGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'history-quiz',
+    name:              '역사 퀴즈',
+    icon:              '🏛️',
+    description:       '한국사 문제를 초등 눈높이로! 교사가 고른 시대(선사~근현대)에서 10문제가 출제됩니다.',
+    duration:          '약 3분',
+    color:             'bg-amber-500',
+    component:         HistoryQuizGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },

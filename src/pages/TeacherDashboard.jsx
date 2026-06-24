@@ -11,6 +11,7 @@ import {
 } from '../lib/firestore'
 import { GAMES } from '../config/games'
 import { VOCAB_UNIT_NAMES } from '../data/vocabData'
+import { HISTORY_ERAS } from '../data/historyData'
 import { BOSS_PRESETS } from '../data/bossPresets'
 
 const TABS = ['학급 설정', '학생 관리', '게임 관리', '학생 활동']
@@ -120,6 +121,8 @@ function defaultSettingsFor(game) {
   if (game.id === 'verb-forms')  return { ...base, verbMode: 'mc' }
   if (game.id === 'operator-order') return { ...base, opOrderLevel: 1 }
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
+  if (game.id === 'flag-quiz')   return { ...base, flagDifficulty: 'easy' }
+  if (game.id === 'history-quiz') return { ...base, historyEras: HISTORY_ERAS.map(e => e.key) }
   if (game.id === 'space-docking') return {
     ...base,
     pointsPerCompletion: 15,  // 세 마일스톤 합산 (자동 계산)
@@ -921,6 +924,67 @@ export default function TeacherDashboard() {
                       <span className="text-sm font-medium">{label}</span>
                     </label>
                   ))}
+                </div>
+              )}
+
+              {/* ── 국기 퀴즈 난이도 ── */}
+              {selectedGameId === 'flag-quiz' && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-2">
+                  <p className="font-bold text-sm">🚩 난이도 설정</p>
+                  {[
+                    { key: 'easy', label: '🌟 쉬움 — 익숙한 50개국만 출제' },
+                    { key: 'hard', label: '🔥 어려움 — 전체 100여 개국 출제' },
+                  ].map(({ key, label }) => (
+                    <label key={key}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all ${
+                        (selectedS.flagDifficulty || 'easy') === key
+                          ? 'border-rose-400 bg-rose-50'
+                          : 'border-gray-100 bg-white'}`}>
+                      <input
+                        type="radio"
+                        name="flagDifficulty"
+                        checked={(selectedS.flagDifficulty || 'easy') === key}
+                        onChange={() => updateGameSetting('flag-quiz', 'flagDifficulty', key)}
+                        className="accent-rose-500"
+                      />
+                      <span className="text-sm font-medium">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {/* ── 역사 퀴즈 시대 선택 (멀티셀렉트) ── */}
+              {selectedGameId === 'history-quiz' && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-2">
+                  <p className="font-bold text-sm">🏛️ 출제 시대 선택 (여러 개 가능)</p>
+                  <p className="text-xs text-carnival-navy/40">선택한 시대의 문제만 모아 10문제가 출제돼요. 최소 1개는 선택해야 해요.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {HISTORY_ERAS.map(era => {
+                      const selected = (selectedS.historyEras || HISTORY_ERAS.map(e => e.key))
+                      const checked  = selected.includes(era.key)
+                      return (
+                        <label key={era.key}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer border text-sm font-medium transition-all ${
+                            checked
+                              ? 'border-amber-400 bg-amber-50 text-amber-700'
+                              : 'border-gray-100 bg-white text-carnival-navy/60'}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? selected.filter(k => k !== era.key)
+                                : [...selected, era.key]
+                              if (next.length === 0) return  // 최소 1개 유지
+                              updateGameSetting('history-quiz', 'historyEras', next)
+                            }}
+                            className="accent-amber-500"
+                          />
+                          <span>{era.label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
 
