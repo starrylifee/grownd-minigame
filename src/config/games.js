@@ -95,7 +95,7 @@ export const GAMES = [
     id:                'flag-quiz',
     name:              '국기 퀴즈',
     icon:              '🚩',
-    description:       '국기만 보고 어느 나라인지 맞혀보세요! 100여 개 나라의 국기가 출제됩니다.',
+    description:       '국기만 보고 어느 나라인지 맞혀보세요! 난이도(쉬움 50개국·어려움 100여 개국)를 골라 도전할 수 있어요.',
     duration:          '약 3분',
     color:             'bg-rose-400',
     component:         FlagQuizGame,

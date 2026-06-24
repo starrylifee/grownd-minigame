@@ -2,20 +2,27 @@
  * 🚩 국기 퀴즈
  *
  * [게임 방식]
- * - 국기만 보고 나라 이름을 입력 (SET 1 + SET 2 전체 풀에서 10개 출제)
+ * - 시작 화면에서 난이도 선택 → 쉬움(익숙한 50개국) / 어려움(전체 100여 개국, 50개국 포함)
+ * - 국기만 보고 나라 이름을 입력, 선택한 풀에서 셔플해 10개 출제
  * - 오타 횟수 비례 감점 → 점수 확정 (나라 수도 퀴즈와 동일)
  * - 힌트: 1회 오답 → 글자 수(___ 형태), 2회 오답 → 첫 글자 공개 + 정답 표시
  * - 다른 표기(예: 터키/튀르키예)는 COUNTRY_ALIASES로 모두 정답 처리
  */
 import { useState, useRef, useEffect } from 'react'
-import { COUNTRIES, COUNTRIES_SET2, COUNTRY_ALIASES } from '../../data/countriesData'
+import { COUNTRIES, COUNTRIES_SET2, COUNTRY_ALIASES, FLAG_EASY_COUNTRIES } from '../../data/countriesData'
 import FlagImage from '../../components/FlagImage'
 
 const TOTAL = 10
-const POOL  = [...COUNTRIES, ...COUNTRIES_SET2]
+const POOL_ALL  = [...COUNTRIES, ...COUNTRIES_SET2]
+const POOL_EASY = POOL_ALL.filter(c => FLAG_EASY_COUNTRIES.has(c.country))
 
-function pickItems() {
-  const shuffled = [...POOL].sort(() => Math.random() - 0.5)
+const DIFFICULTIES = {
+  easy: { label: '쉬움',   icon: '🌟', pool: POOL_EASY, desc: `익숙한 나라 ${POOL_EASY.length}개국` },
+  hard: { label: '어려움', icon: '🔥', pool: POOL_ALL,  desc: `전체 ${POOL_ALL.length}개국` },
+}
+
+function pickItems(pool) {
+  const shuffled = [...pool].sort(() => Math.random() - 0.5)
   return shuffled.slice(0, Math.min(TOTAL, shuffled.length))
 }
 
@@ -33,7 +40,9 @@ function isCorrect(item, userAns) {
 }
 
 export default function FlagQuizGame({ activity, onComplete, onExit }) {
-  const [items] = useState(() => pickItems())
+  // 난이도 선택 (null = 아직 시작 전, 선택 화면 표시)
+  const [difficulty, setDifficulty] = useState(null)
+  const [items, setItems]           = useState([])
 
   // 메인 게임
   const [idx, setIdx]               = useState(0)
@@ -51,7 +60,13 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
 
   const pendingResult = useRef(null)
   const inputRef      = useRef(null)
-  const startTimeRef  = useRef(Date.now())
+  const startTimeRef  = useRef(null)
+
+  function startGame(level) {
+    setItems(pickItems(DIFFICULTIES[level].pool))
+    setDifficulty(level)
+    startTimeRef.current = Date.now()
+  }
 
   // 입력창 자동 포커스 — 문제 전환·오답 후 입력창이 다시 뜰 때마다 커서 복귀
   useEffect(() => { if (feedback === null) inputRef.current?.focus() }, [idx, reviewIdx, isReview, feedback])
@@ -141,6 +156,39 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
     }
   }, [isReview, reviewItems])
 
+  // 난이도 선택 화면
+  if (difficulty === null) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-2xl font-black text-carnival-navy">🚩 국기 퀴즈</h1>
+            <button onClick={onExit}
+              className="text-sm text-carnival-navy/40 hover:text-carnival-coral transition-colors">
+              나가기
+            </button>
+          </div>
+          <p className="text-sm text-carnival-navy/50 mb-6">난이도를 골라주세요</p>
+
+          <div className="space-y-3">
+            {Object.entries(DIFFICULTIES).map(([key, d]) => (
+              <button key={key} onClick={() => startGame(key)}
+                className="card w-full text-left p-5 hover:border-rose-300 hover:bg-rose-50/40 transition-colors">
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl">{d.icon}</span>
+                  <div>
+                    <p className="font-black text-lg text-carnival-navy">{d.label}</p>
+                    <p className="text-sm text-carnival-navy/50">{d.desc} 중 {TOTAL}개 출제</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
@@ -157,7 +205,7 @@ export default function FlagQuizGame({ activity, onComplete, onExit }) {
         {/* 배지 */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-rose-300 bg-rose-50 text-rose-700 text-sm font-bold">
-            <span>🏳️</span><span>세계 국기</span>
+            <span>{DIFFICULTIES[difficulty].icon}</span><span>국기 · {DIFFICULTIES[difficulty].label}</span>
           </div>
           {isReview && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-amber-300 bg-amber-50 text-amber-700 text-sm font-bold animate-pulse">
