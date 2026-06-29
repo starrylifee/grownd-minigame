@@ -15,6 +15,7 @@ import CountryQuizGame2  from '../pages/games/CountryQuizGame2'
 import FlagQuizGame      from '../pages/games/FlagQuizGame'
 import HistoryQuizGame    from '../pages/games/HistoryQuizGame'
 import ProverbChosungGame from '../pages/games/ProverbChosungGame'
+import IdiomChosungGame   from '../pages/games/IdiomChosungGame'
 import WordMeaningGame   from '../pages/games/WordMeaningGame'
 import VerbFormsGame     from '../pages/games/VerbFormsGame'
 import OperatorOrderGame from '../pages/games/OperatorOrderGame'
@@ -122,6 +123,17 @@ export const GAMES = [
     duration:          '약 4분',
     color:             'bg-amber-400',
     component:         ProverbChosungGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'idiom-chosung',
+    name:              '사자성어 초성 퀴즈',
+    icon:              '🀄',
+    description:       '초성만 보고 사자성어를 완성하세요! 막히면 뜻과 한자 힌트가 나와요.',
+    duration:          '약 4분',
+    color:             'bg-rose-400',
+    component:         IdiomChosungGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },
