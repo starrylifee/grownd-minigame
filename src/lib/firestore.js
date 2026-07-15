@@ -1,6 +1,6 @@
 import {
   doc, getDoc, setDoc, updateDoc, collection, getDocs, deleteDoc,
-  increment, onSnapshot, arrayUnion
+  increment, onSnapshot, arrayUnion, runTransaction
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -101,6 +101,22 @@ function playLogId(classCode, gameId, studentCode, date = todayKST()) {
 export async function getTodayPlayCount(classCode, gameId, studentCode) {
   const snap = await getDoc(doc(db, 'playLogs', playLogId(classCode, gameId, studentCode)))
   return snap.exists() ? (snap.data().count || 0) : 0
+}
+
+/**
+ * 게임 시작 시점에 오늘 플레이 횟수를 1 차감(count+1)합니다.
+ * 중간에 창을 닫아도 차감이 유지됩니다.
+ * @returns {Promise<boolean>} 차감 성공 여부 (한도 초과면 false)
+ */
+export async function consumePlayAttempt(classCode, gameId, studentCode, dailyLimit) {
+  const ref = doc(db, 'playLogs', playLogId(classCode, gameId, studentCode))
+  return runTransaction(db, async (t) => {
+    const snap  = await t.get(ref)
+    const count = snap.exists() ? (snap.data().count || 0) : 0
+    if (count >= dailyLimit) return false
+    t.set(ref, { count: count + 1, classCode, gameId, studentCode, date: todayKST() }, { merge: true })
+    return true
+  })
 }
 
 export async function savePlayRound(classCode, gameId, studentCode, roundData) {

@@ -51,25 +51,32 @@ exports.awardPoints = onCall(
     const { pointsPerCompletion = 10, name = '미니게임' } = actData
     const dailyLimit = actData.dailyLimit ?? DEFAULT_DAILY_LIMIT[gameId] ?? FALLBACK_LIMIT
 
-    // 3. ★ 일일 횟수 체크 + 원자적 증가 (API 키 확인보다 먼저 실행)
-    //    → API 키 미설정 환경(테스트)에서도 횟수가 정상 누적됨
+    // 3. ★ 일일 포인트 지급 한도 체크 + 원자적 증가
+    //    횟수(count)는 게임 시작 시 클라이언트가 올린다(중도 이탈해도 차감 유지).
+    //    포인트 지급 한도는 awarded 필드로 서버가 원자적으로 관리해 우회·이중 지급을 막는다.
     const today  = todayKST()
     const logRef = db.collection('playLogs').doc(`${classCode}_${gameId}_${studentCode}_${today}`)
 
-    let playCount = 0
+    let awarded = 0
     await db.runTransaction(async (t) => {
       const logSnap = await t.get(logRef)
-      playCount = logSnap.exists ? (logSnap.data().count || 0) : 0
-      if (playCount < dailyLimit) {
+      const data    = logSnap.exists ? logSnap.data() : {}
+      awarded = data.awarded || 0
+      if (awarded < dailyLimit) {
         t.set(
           logRef,
-          { count: playCount + 1, classCode, gameId, studentCode, date: today },
+          {
+            awarded: awarded + 1,
+            // 시작 차감 기록이 없는 구버전 클라이언트 보정: count가 awarded보다 뒤처지지 않게
+            count: Math.max(data.count || 0, awarded + 1),
+            classCode, gameId, studentCode, date: today,
+          },
           { merge: true }
         )
       }
     })
 
-    if (playCount >= dailyLimit) {
+    if (awarded >= dailyLimit) {
       throw new HttpsError(
         'resource-exhausted',
         `오늘 이미 ${dailyLimit}번 플레이했습니다. 내일 다시 도전하세요!`

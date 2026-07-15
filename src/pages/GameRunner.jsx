@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect }    from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth }                from '../context/AuthContext'
-import { getActivity, getTodayPlayCount, saveGameScore, savePlayRound, getClass, isWeekendKST } from '../lib/firestore'
+import { getActivity, getTodayPlayCount, saveGameScore, savePlayRound, getClass, isWeekendKST, consumePlayAttempt } from '../lib/firestore'
 import { awardPoints }            from '../lib/growndApi'
 import { getGame }                from '../config/games'
 import ActivityPasswordModal      from '../components/ActivityPasswordModal'
@@ -22,6 +22,7 @@ export default function GameRunner() {
   const [limitReached, setLimitReached]   = useState(null)   // { count, limit }
   const [isPracticeMode, setIsPracticeMode] = useState(false) // 연습 모드
   const [weekendLocked, setWeekendLocked] = useState(false)  // 주말 잠금
+  const consumed = useRef(false)                             // 시작 차감 1회 보장
 
   useEffect(() => {
     if (!game) { navigate('/student/lobby'); return }
@@ -54,6 +55,23 @@ export default function GameRunner() {
     }
     load()
   }, [gameId])
+
+  // 게임 입장(비밀번호 통과) 시점에 횟수 차감 — 중간에 꺼도 차감 유지
+  useEffect(() => {
+    if (!passwordOk || !activity || isPracticeMode || consumed.current) return
+    consumed.current = true
+    const dailyLimit = activity.dailyLimit ?? game.defaultDailyLimit ?? 5
+    consumePlayAttempt(student.classCode, gameId, student.studentCode, dailyLimit)
+      .then(ok => {
+        if (!ok) {
+          // 다른 탭 등에서 이미 한도를 다 쓴 경우
+          if (activity.practiceMode) setIsPracticeMode(true)
+          else setLimitReached({ count: dailyLimit, limit: dailyLimit })
+        }
+      })
+      .catch(() => {}) // 차감 실패(네트워크 등)해도 게임은 진행 — 포인트 한도는 서버가 지킨다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [passwordOk, activity])
 
   async function handleComplete(gameResult) {
     // 회차 기록 저장 (연습 모드 포함)
