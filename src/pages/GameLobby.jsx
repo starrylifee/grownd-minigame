@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getAllActivities, getTodayLeaderboard, subscribeToRaidBoss } from '../lib/firestore'
+import { getAllActivities, getTodayLeaderboard, subscribeToRaidBoss, getClass, isWeekendKST } from '../lib/firestore'
 import { GAMES } from '../config/games'
 
 const TIMED_GAMES = ['word-typing', 'typing', 'math-quiz', 'vocab']
@@ -131,11 +131,16 @@ export default function GameLobby() {
   const [activities, setActivities] = useState({})
   const [loading, setLoading]       = useState(true)
   const [raidBoss, setRaidBoss]     = useState(null)
+  const [weekendLocked, setWeekendLocked] = useState(false)
 
   useEffect(() => {
     async function load() {
-      const data = await getAllActivities(student.classCode)
+      const [data, classData] = await Promise.all([
+        getAllActivities(student.classCode),
+        getClass(student.classCode),
+      ])
       setActivities(data)
+      setWeekendLocked(!!classData?.weekendLock && isWeekendKST())
       setLoading(false)
     }
     load()
@@ -148,6 +153,7 @@ export default function GameLobby() {
   }, [student.classCode])
 
   function handleSelect(game) {
+    if (weekendLocked) return
     const act = activities[game.id]
     if (!act?.enabled) return
     navigate(`/student/game/${game.id}`)
@@ -171,6 +177,20 @@ export default function GameLobby() {
         </button>
       </div>
 
+      {/* 주말 잠금 */}
+      {!loading && weekendLocked && (
+        <div className="card text-center py-14 space-y-3">
+          <div className="text-6xl">🌤️</div>
+          <h2 className="text-2xl font-black text-carnival-navy">주말에는 쉬어요!</h2>
+          <p className="text-sm text-carnival-navy/50">
+            토요일·일요일에는 게임이 잠겨 있어요.<br />
+            푹 쉬고 월요일에 다시 만나요 👋
+          </p>
+        </div>
+      )}
+
+      {weekendLocked ? null : (
+      <>
       {/* 포인트 배너 */}
       <div className="bg-gradient-to-r from-carnival-yellow to-carnival-orange rounded-3xl p-5 mb-8 shadow-lg">
         <p className="text-carnival-navy/70 text-sm font-medium">게임을 완료하면</p>
@@ -256,6 +276,8 @@ export default function GameLobby() {
 
           <LeaderboardPanel classCode={student.classCode} />
         </>
+      )}
+      </>
       )}
     </div>
   )

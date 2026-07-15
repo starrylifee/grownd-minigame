@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect }    from 'react'
 import { useAuth }                from '../context/AuthContext'
-import { getActivity, getTodayPlayCount, saveGameScore, savePlayRound } from '../lib/firestore'
+import { getActivity, getTodayPlayCount, saveGameScore, savePlayRound, getClass, isWeekendKST } from '../lib/firestore'
 import { awardPoints }            from '../lib/growndApi'
 import { getGame }                from '../config/games'
 import ActivityPasswordModal      from '../components/ActivityPasswordModal'
@@ -21,10 +21,15 @@ export default function GameRunner() {
   const [awarding, setAwarding]           = useState(false)
   const [limitReached, setLimitReached]   = useState(null)   // { count, limit }
   const [isPracticeMode, setIsPracticeMode] = useState(false) // 연습 모드
+  const [weekendLocked, setWeekendLocked] = useState(false)  // 주말 잠금
 
   useEffect(() => {
     if (!game) { navigate('/student/lobby'); return }
     async function load() {
+      // 주말 잠금 체크 (로비를 거치지 않고 주소로 직접 들어와도 차단)
+      const classData = await getClass(student.classCode)
+      if (classData?.weekendLock && isWeekendKST()) { setWeekendLocked(true); return }
+
       const act = await getActivity(student.classCode, gameId)
       if (!act?.enabled) { navigate('/student/lobby'); return }
 
@@ -103,6 +108,27 @@ export default function GameRunner() {
     } finally {
       setAwarding(false)
     }
+  }
+
+  // 주말 잠금
+  if (weekendLocked) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4">
+        <div className="card w-full max-w-sm text-center py-10 space-y-4">
+          <div className="text-5xl">🌤️</div>
+          <h2 className="text-xl font-black text-carnival-navy">주말에는 쉬어요!</h2>
+          <p className="text-carnival-navy/60 text-sm">
+            토요일·일요일에는 게임이 잠겨 있어요.<br />월요일에 다시 만나요 👋
+          </p>
+          <button
+            onClick={() => navigate('/student/lobby')}
+            className="btn-primary w-full"
+          >
+            로비로 돌아가기
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // 로딩 중

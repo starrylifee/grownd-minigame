@@ -161,6 +161,7 @@ export default function TeacherDashboard() {
   const [growndClassId, setGrowndClassId] = useState('')       // 그라운드 학급 ID는 학급 단위
   const [classCode, setClassCode]         = useState('')
   const [className, setClassName]         = useState('')
+  const [weekendLock, setWeekendLock]     = useState(false)   // 주말(토·일) 학생 게임 잠금
 
   // 학생 목록
   const [students, setStudents]   = useState({})
@@ -241,6 +242,7 @@ export default function TeacherDashboard() {
     async function loadClass() {
       const classData = await getClass(classCode)
       setStudents(classData?.students || {})  // 학급 전환 시 이전 학급 학생이 남지 않도록 항상 초기화
+      setWeekendLock(classData?.weekendLock ?? false)
 
       const settings = {}
       for (const game of GAMES) {
@@ -265,6 +267,14 @@ export default function TeacherDashboard() {
   function flash(text) {
     setMsg(text)
     setTimeout(() => setMsg(''), 2500)
+  }
+
+  // 주말 잠금 토글: 즉시 저장
+  async function toggleWeekendLock(v) {
+    if (!classCode) return
+    setWeekendLock(v)
+    await saveClass(classCode, { weekendLock: v })
+    flash(v ? '🔒 주말 잠금이 켜졌습니다. 토·일요일에 학생 게임이 잠깁니다.' : '🔓 주말 잠금이 꺼졌습니다.')
   }
 
   // 학생/활동을 저장할 때마다 교사 문서의 학급 목록을 동기화한다.
@@ -568,6 +578,14 @@ export default function TeacherDashboard() {
                 <input value={growndClassId} onChange={e => setGrowndClassId(e.target.value)}
                   placeholder="그라운드카드 학급 ID" className="input-field" />
                 <p className="text-xs text-carnival-navy/30 mt-1">학급마다 다른 그라운드 학급 ID를 입력하세요</p>
+              </div>
+
+              <div className="flex items-center justify-between bg-indigo-50 rounded-2xl px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-indigo-900">🌙 주말 잠금</p>
+                  <p className="text-xs text-indigo-900/50 mt-0.5">켜면 토·일요일(한국 시간)에는 학생들이 게임을 할 수 없어요.</p>
+                </div>
+                <Toggle on={weekendLock} onChange={toggleWeekendLock} />
               </div>
             </>
           )}

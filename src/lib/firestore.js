@@ -87,6 +87,13 @@ export function todayKST() {
   return kst.toISOString().slice(0, 10)
 }
 
+// 한국 시간 기준 주말(토·일) 여부
+export function isWeekendKST() {
+  const kst = new Date(Date.now() + 9 * 60 * 60 * 1000)
+  const day = kst.getUTCDay() // 0=일요일, 6=토요일
+  return day === 0 || day === 6
+}
+
 function playLogId(classCode, gameId, studentCode, date = todayKST()) {
   return `${classCode}_${gameId}_${studentCode}_${date}`
 }

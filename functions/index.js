@@ -34,6 +34,14 @@ exports.awardPoints = onCall(
     }
     const { teacherUid } = classSnap.data()
 
+    // 1-1. 주말 잠금 체크 (클라이언트 우회 방지)
+    if (classSnap.data().weekendLock) {
+      const kstDay = new Date(Date.now() + 9 * 60 * 60 * 1000).getUTCDay() // 0=일, 6=토
+      if (kstDay === 0 || kstDay === 6) {
+        throw new HttpsError('failed-precondition', '주말에는 게임이 잠겨 있어요. 평일에 다시 만나요!')
+      }
+    }
+
     // 2. 활동 설정 조회 (포인트, 일일 제한)
     const actSnap = await db.collection('activities').doc(`${classCode}_${gameId}`).get()
     if (!actSnap.exists) {
