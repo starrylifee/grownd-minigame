@@ -119,6 +119,31 @@ export async function consumePlayAttempt(classCode, gameId, studentCode, dailyLi
   })
 }
 
+/**
+ * 학생의 오늘 게임별 횟수 사용 현황을 가져옵니다 (교사용).
+ * @returns {Promise<Object>} { [gameId]: { count, awarded } } — 기록 있는 게임만
+ */
+export async function getStudentPlayCounts(classCode, studentCode, gameIds, date = todayKST()) {
+  const result = {}
+  await Promise.all(gameIds.map(async gameId => {
+    const snap = await getDoc(doc(db, 'playLogs', playLogId(classCode, gameId, studentCode, date)))
+    if (snap.exists()) {
+      const d = snap.data()
+      result[gameId] = { count: d.count || 0, awarded: d.awarded || 0 }
+    }
+  }))
+  return result
+}
+
+/**
+ * 학생의 오늘 플레이 횟수를 초기화합니다 (교사용).
+ * 회차 기록(rounds)은 보존하고 count·awarded만 0으로 되돌립니다.
+ */
+export async function resetTodayPlayCount(classCode, gameId, studentCode) {
+  const ref = doc(db, 'playLogs', playLogId(classCode, gameId, studentCode))
+  await setDoc(ref, { count: 0, awarded: 0 }, { merge: true })
+}
+
 export async function savePlayRound(classCode, gameId, studentCode, roundData) {
   const ref = doc(db, 'playLogs', playLogId(classCode, gameId, studentCode))
   await setDoc(ref, { rounds: arrayUnion({ ts: Date.now(), ...roundData }) }, { merge: true })

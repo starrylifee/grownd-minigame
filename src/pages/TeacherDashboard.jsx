@@ -8,6 +8,7 @@ import {
   saveActivity, getActivity, hashPassword,
   getRaidBoss, resetRaidBoss, getTodayLeaderboard,
   getStudentRounds, todayKST,
+  getStudentPlayCounts, resetTodayPlayCount,
 } from '../lib/firestore'
 import { GAMES } from '../config/games'
 import { VOCAB_UNIT_NAMES } from '../data/vocabData'
@@ -188,7 +189,27 @@ export default function TeacherDashboard() {
   // 회차별 상세 모달
   const [roundModal, setRoundModal] = useState(null) // { studentNum, studentName, game, rounds, loading }
 
+  // 횟수 초기화 모달
+  const [countModal, setCountModal] = useState(null) // { studentNum, studentName, counts, loading }
+
   const isToday = activityDate === todayKST()
+
+  async function openCountModal(num, name) {
+    setCountModal({ studentNum: num, studentName: name, counts: {}, loading: true })
+    const counts = await getStudentPlayCounts(classCode, num, GAMES.map(g => g.id))
+    setCountModal(prev => prev ? { ...prev, counts, loading: false } : null)
+  }
+
+  async function resetCount(gameId) {
+    if (!countModal) return
+    const game = GAMES.find(g => g.id === gameId)
+    if (!window.confirm(`${countModal.studentName} 학생의 '${game?.name}' 오늘 횟수를 초기화할까요?\n(처음부터 다시 도전하고 포인트도 다시 받을 수 있게 됩니다)`)) return
+    await resetTodayPlayCount(classCode, gameId, countModal.studentNum)
+    setCountModal(prev => prev
+      ? { ...prev, counts: { ...prev.counts, [gameId]: { count: 0, awarded: 0 } } }
+      : null)
+    flash('🔄 횟수가 초기화되었습니다.')
+  }
 
   async function openRoundModal(num, name, game) {
     setRoundModal({ studentNum: num, studentName: name, game, rounds: [], loading: true })
@@ -1263,9 +1284,19 @@ export default function TeacherDashboard() {
                                 {s.name}
                               </span>
                             </div>
-                            {!hasAny && (
-                              <span className="text-xs text-gray-300">{isToday ? '오늘 ' : ''}플레이 없음</span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {!hasAny && (
+                                <span className="text-xs text-gray-300">{isToday ? '오늘 ' : ''}플레이 없음</span>
+                              )}
+                              {isToday && (
+                                <button
+                                  onClick={() => openCountModal(num, s.name)}
+                                  className="text-xs font-bold text-carnival-navy/30 hover:text-carnival-sky transition-colors"
+                                >
+                                  🔄 횟수
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {hasAny && (
@@ -1381,6 +1412,62 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
                   ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── 횟수 초기화 모달 ── */}
+      {countModal && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4"
+          onClick={() => setCountModal(null)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-sm shadow-xl p-6 space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-black text-carnival-navy text-sm">{countModal.studentNum}번 {countModal.studentName}</p>
+                <p className="text-xs text-carnival-navy/40">오늘 게임별 사용 횟수</p>
+              </div>
+              <button
+                onClick={() => setCountModal(null)}
+                className="text-carnival-navy/30 hover:text-carnival-coral text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            {countModal.loading ? (
+              <div className="text-center py-6 text-2xl animate-bounce-slow">🎡</div>
+            ) : GAMES.filter(g => (countModal.counts[g.id]?.count || 0) > 0).length === 0 ? (
+              <p className="text-center text-carnival-navy/30 py-6 text-sm">오늘 사용한 횟수가 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {GAMES.filter(g => (countModal.counts[g.id]?.count || 0) > 0).map(g => {
+                  const c     = countModal.counts[g.id]
+                  const limit = gameSettings[g.id]?.dailyLimit ?? g.defaultDailyLimit ?? 5
+                  return (
+                    <div key={g.id} className="flex items-center justify-between bg-carnival-cream rounded-2xl px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{g.icon}</span>
+                        <div>
+                          <p className="text-sm font-bold text-carnival-navy">{g.name}</p>
+                          <p className="text-xs text-carnival-navy/40">{c.count}/{limit}회 사용 · 포인트 {c.awarded}회 지급</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => resetCount(g.id)}
+                        className="text-xs font-bold bg-white rounded-xl px-3 py-1.5 text-carnival-coral hover:bg-carnival-coral hover:text-white transition-colors shadow-sm"
+                      >
+                        초기화
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
