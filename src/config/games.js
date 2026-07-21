@@ -17,6 +17,7 @@ import HistoryQuizGame    from '../pages/games/HistoryQuizGame'
 import ProverbChosungGame from '../pages/games/ProverbChosungGame'
 import IdiomChosungGame   from '../pages/games/IdiomChosungGame'
 import WordMeaningGame   from '../pages/games/WordMeaningGame'
+import ClozeGame         from '../pages/games/ClozeGame'
 import VerbFormsGame     from '../pages/games/VerbFormsGame'
 import OperatorOrderGame from '../pages/games/OperatorOrderGame'
 // 레거시: 끝말잇기 (학생 난이도 문제로 비공개, 코드는 보존)
@@ -145,6 +146,17 @@ export const GAMES = [
     duration:          '약 3분',
     color:             'bg-indigo-400',
     component:         WordMeaningGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'cloze',
+    name:              '문해력 빈칸 퀴즈',
+    icon:              '📖',
+    description:       '문장 속 빈칸에 알맞은 낱말을 골라요! 국립국어원 등급별 어휘로 만든 문맥 추론 퀴즈입니다.',
+    duration:          '약 3분',
+    color:             'bg-violet-500',
+    component:         ClozeGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },

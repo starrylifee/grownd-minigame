@@ -124,6 +124,7 @@ function defaultSettingsFor(game) {
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
   if (game.id === 'flag-quiz')   return { ...base, flagDifficulty: 'easy' }
   if (game.id === 'history-quiz') return { ...base, historyEras: HISTORY_ERAS.map(e => e.key) }
+  if (game.id === 'cloze')       return { ...base, clozeLevel: 'mid' }
   if (game.id === 'space-docking') return {
     ...base,
     pointsPerCompletion: 15,  // 세 마일스톤 합산 (자동 계산)
@@ -1024,6 +1025,34 @@ export default function TeacherDashboard() {
                       )
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* ── 문해력 빈칸 퀴즈 수준 선택 ── */}
+              {selectedGameId === 'cloze' && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-2">
+                  <p className="font-bold text-sm">📖 출제 수준 설정</p>
+                  <p className="text-xs text-carnival-navy/40">국립국어원 등급별 어휘 기반 110문항 중 선택한 수준에서 10문제가 출제돼요.</p>
+                  {[
+                    { key: 'mid',  label: '🌱 3~4학년 — 생활·감정 중심 기초 어휘 (55문항)' },
+                    { key: 'high', label: '🌳 5~6학년 — 학습도구어·추상 어휘 (55문항)' },
+                    { key: 'all',  label: '🎲 전체 혼합 — 두 수준을 섞어 출제 (110문항)' },
+                  ].map(({ key, label }) => (
+                    <label key={key}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all ${
+                        (selectedS.clozeLevel || 'mid') === key
+                          ? 'border-violet-400 bg-violet-50'
+                          : 'border-gray-100 bg-white'}`}>
+                      <input
+                        type="radio"
+                        name="clozeLevel"
+                        checked={(selectedS.clozeLevel || 'mid') === key}
+                        onChange={() => updateGameSetting('cloze', 'clozeLevel', key)}
+                        className="accent-violet-500"
+                      />
+                      <span className="text-sm font-medium">{label}</span>
+                    </label>
+                  ))}
                 </div>
               )}
 
