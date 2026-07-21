@@ -400,7 +400,7 @@ export const CLOZE_ITEMS = [
   {
     level: 'high', word: '타협',
     sentence: '두 나라는 오랜 회담 끝에 서로 한발씩 물러나 ____점을 찾았다.',
-    choices: ['타협', '경쟁', '의문', '차이'],
+    choices: ['타협', '경쟁', '대립', '무관심'],
     meaning: '서로 조금씩 양보하여 의견을 맞춤.',
   },
   {
