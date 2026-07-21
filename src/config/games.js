@@ -18,6 +18,7 @@ import ProverbChosungGame from '../pages/games/ProverbChosungGame'
 import IdiomChosungGame   from '../pages/games/IdiomChosungGame'
 import WordMeaningGame   from '../pages/games/WordMeaningGame'
 import ClozeGame         from '../pages/games/ClozeGame'
+import ScienceQuizGame   from '../pages/games/ScienceQuizGame'
 import VerbFormsGame     from '../pages/games/VerbFormsGame'
 import OperatorOrderGame from '../pages/games/OperatorOrderGame'
 // 레거시: 끝말잇기 (학생 난이도 문제로 비공개, 코드는 보존)
@@ -157,6 +158,17 @@ export const GAMES = [
     duration:          '약 3분',
     color:             'bg-violet-500',
     component:         ClozeGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'science-quiz',
+    name:              '과학 상식 퀴즈',
+    icon:              '🔬',
+    description:       '초등 과학 상식을 재미있게! 교사가 고른 영역(물질·생명·지구·에너지·생활상식)에서 10문제가 출제됩니다.',
+    duration:          '약 3분',
+    color:             'bg-cyan-500',
+    component:         ScienceQuizGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },

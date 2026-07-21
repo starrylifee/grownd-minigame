@@ -13,6 +13,7 @@ import {
 import { GAMES } from '../config/games'
 import { VOCAB_UNIT_NAMES } from '../data/vocabData'
 import { HISTORY_ERAS } from '../data/historyData'
+import { SCIENCE_FIELDS } from '../data/scienceData'
 import { BOSS_PRESETS } from '../data/bossPresets'
 
 const TABS = ['학급 설정', '학생 관리', '게임 관리', '학생 활동']
@@ -125,6 +126,7 @@ function defaultSettingsFor(game) {
   if (game.id === 'flag-quiz')   return { ...base, flagDifficulty: 'easy' }
   if (game.id === 'history-quiz') return { ...base, historyEras: HISTORY_ERAS.map(e => e.key) }
   if (game.id === 'cloze')       return { ...base, clozeLevel: 'mid' }
+  if (game.id === 'science-quiz') return { ...base, scienceFields: SCIENCE_FIELDS.map(f => f.key) }
   if (game.id === 'space-docking') return {
     ...base,
     pointsPerCompletion: 15,  // 세 마일스톤 합산 (자동 계산)
@@ -1021,6 +1023,41 @@ export default function TeacherDashboard() {
                             className="accent-amber-500"
                           />
                           <span>{era.label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ── 과학 상식 퀴즈 영역 선택 (멀티셀렉트) ── */}
+              {selectedGameId === 'science-quiz' && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-2">
+                  <p className="font-bold text-sm">🔬 출제 영역 선택 (여러 개 가능)</p>
+                  <p className="text-xs text-carnival-navy/40">선택한 영역의 문제만 모아 10문제가 출제돼요. 최소 1개는 선택해야 해요.</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {SCIENCE_FIELDS.map(field => {
+                      const selected = (selectedS.scienceFields || SCIENCE_FIELDS.map(f => f.key))
+                      const checked  = selected.includes(field.key)
+                      return (
+                        <label key={field.key}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer border text-sm font-medium transition-all ${
+                            checked
+                              ? 'border-cyan-400 bg-cyan-50 text-cyan-700'
+                              : 'border-gray-100 bg-white'}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? selected.filter(k => k !== field.key)
+                                : [...selected, field.key]
+                              if (next.length === 0) return  // 최소 1개 유지
+                              updateGameSetting('science-quiz', 'scienceFields', next)
+                            }}
+                            className="accent-cyan-500"
+                          />
+                          <span>{field.label}</span>
                         </label>
                       )
                     })}
