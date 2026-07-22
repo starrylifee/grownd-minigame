@@ -435,6 +435,16 @@ export default function TeacherDashboard() {
     await linkClassToTeacher()
   }
 
+  // 연습 모드 토글: 즉시 저장 (저장 버튼을 누르지 않으면 설정이 사라지던 문제 방지)
+  async function togglePracticeMode(gameId, v) {
+    if (!classCode) return
+    const game = GAMES.find(g => g.id === gameId)
+    const newS = { ...gameSettings[gameId], practiceMode: v }
+    setGameSettings(prev => ({ ...prev, [gameId]: newS }))
+    await saveActivity(classCode, gameId, { name: game.name, ...newS })
+    flash(v ? '✏️ 연습 모드가 켜졌습니다. 횟수를 다 쓴 학생도 포인트 없이 플레이할 수 있어요.' : '✏️ 연습 모드가 꺼졌습니다.')
+  }
+
   // 개별 게임 저장
   async function saveOneGame(gameId) {
     if (!classCode) return
@@ -835,12 +845,12 @@ export default function TeacherDashboard() {
               {/* 연습 모드 */}
               <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
                 <div>
-                  <p className="text-sm font-bold text-amber-800">✏️ 연습 모드 허용</p>
+                  <p className="text-sm font-bold text-amber-800">✏️ 연습 모드 허용 <span className="font-normal text-amber-500">(바로 저장됨)</span></p>
                   <p className="text-xs text-amber-600 mt-0.5">횟수 초과 학생도 접속 가능 (포인트 미지급)</p>
                 </div>
                 <Toggle
                   on={selectedS.practiceMode}
-                  onChange={v => updateGameSetting(selectedGameId, 'practiceMode', v)}
+                  onChange={v => togglePracticeMode(selectedGameId, v)}
                 />
               </div>
 
