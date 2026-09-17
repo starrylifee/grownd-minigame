@@ -21,6 +21,7 @@ import ClozeGame         from '../pages/games/ClozeGame'
 import ScienceQuizGame   from '../pages/games/ScienceQuizGame'
 import VerbFormsGame     from '../pages/games/VerbFormsGame'
 import OperatorOrderGame from '../pages/games/OperatorOrderGame'
+import CardTenGame       from '../pages/games/CardTenGame'
 // 레거시: 끝말잇기 (학생 난이도 문제로 비공개, 코드는 보존)
 // import WordChainGame     from '../pages/games/WordChainGame'
 // import WordChainGameEn   from '../pages/games/WordChainGameEn'
@@ -191,6 +192,17 @@ export const GAMES = [
     duration:          '약 3분',
     color:             'bg-cyan-500',
     component:         OperatorOrderGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'card-ten',
+    name:              '10 만들기 카드 대결',
+    icon:              '🃏',
+    description:       '컴퓨터와 카드 대결! 0~9 카드를 최대 3장 뒤집어 합을 10에 가장 가깝게 만들어요. 남은 숫자를 보고 뽑을지 멈출지 전략을 세워요.',
+    duration:          '약 3분',
+    color:             'bg-pink-500',
+    component:         CardTenGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },

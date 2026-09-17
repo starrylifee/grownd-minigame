@@ -122,6 +122,7 @@ function defaultSettingsFor(game) {
   if (game.id === 'math-quiz')   return { ...base, mathType: 'single-add' }
   if (game.id === 'verb-forms')  return { ...base, verbMode: 'mc' }
   if (game.id === 'operator-order') return { ...base, opOrderLevel: 1 }
+  if (game.id === 'card-ten')    return { ...base, cardTenReward: 'win', cardTenAi: 'smart' }
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
   if (game.id === 'flag-quiz')   return { ...base, flagDifficulty: 'easy' }
   if (game.id === 'history-quiz') return { ...base, historyEras: HISTORY_ERAS.map(e => e.key) }
@@ -976,6 +977,56 @@ export default function TeacherDashboard() {
                       <span className="text-sm font-medium">{label}</span>
                     </label>
                   ))}
+                </div>
+              )}
+
+              {/* ── 10 만들기 카드 대결 설정 ── */}
+              {selectedGameId === 'card-ten' && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-3">
+                  <div className="space-y-2">
+                    <p className="font-bold text-sm">🃏 포인트 지급 조건</p>
+                    {[
+                      { key: 'win',  label: '🏆 컴퓨터를 이겨야 지급 — 무승부는 절반, 패배는 0' },
+                      { key: 'play', label: '🎮 5라운드 완주하면 지급 — 승패 상관없음' },
+                    ].map(({ key, label }) => (
+                      <label key={key}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all ${
+                          (selectedS.cardTenReward || 'win') === key
+                            ? 'border-pink-400 bg-pink-50'
+                            : 'border-gray-100 bg-white'}`}>
+                        <input
+                          type="radio"
+                          name="cardTenReward"
+                          checked={(selectedS.cardTenReward || 'win') === key}
+                          onChange={() => updateGameSetting('card-ten', 'cardTenReward', key)}
+                          className="accent-pink-500"
+                        />
+                        <span className="text-sm font-medium">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-bold text-sm">🤖 컴퓨터 실력</p>
+                    {[
+                      { key: 'smart', label: '🧠 똑똑함 — 남은 숫자를 보고 뽑을지 판단 (전략 학습용)' },
+                      { key: 'easy',  label: '🙂 단순함 — 합이 6 이하면 뽑고 아니면 멈춤' },
+                    ].map(({ key, label }) => (
+                      <label key={key}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl cursor-pointer border transition-all ${
+                          (selectedS.cardTenAi || 'smart') === key
+                            ? 'border-pink-400 bg-pink-50'
+                            : 'border-gray-100 bg-white'}`}>
+                        <input
+                          type="radio"
+                          name="cardTenAi"
+                          checked={(selectedS.cardTenAi || 'smart') === key}
+                          onChange={() => updateGameSetting('card-ten', 'cardTenAi', key)}
+                          className="accent-pink-500"
+                        />
+                        <span className="text-sm font-medium">{label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
 
