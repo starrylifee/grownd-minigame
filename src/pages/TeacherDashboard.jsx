@@ -14,6 +14,7 @@ import { GAMES } from '../config/games'
 import { VOCAB_UNIT_NAMES } from '../data/vocabData'
 import { HISTORY_ERAS } from '../data/historyData'
 import { SCIENCE_FIELDS } from '../data/scienceData'
+import { ESTIMATE_KINDS } from './games/EstimateMakerGame'
 import { BOSS_PRESETS } from '../data/bossPresets'
 
 const TABS = ['학급 설정', '학생 관리', '게임 관리', '학생 활동']
@@ -123,6 +124,7 @@ function defaultSettingsFor(game) {
   if (game.id === 'verb-forms')  return { ...base, verbMode: 'mc' }
   if (game.id === 'operator-order') return { ...base, opOrderLevel: 1 }
   if (game.id === 'card-ten')    return { ...base, cardTenReward: 'win', cardTenAi: 'smart' }
+  if (game.id === 'estimate-maker') return { ...base, estimateKinds: ESTIMATE_KINDS.map(k => k.key) }
   if (game.id === 'vocab')       return { ...base, vocabUnit: 'UNIT 01' }
   if (game.id === 'flag-quiz')   return { ...base, flagDifficulty: 'easy' }
   if (game.id === 'history-quiz') return { ...base, historyEras: HISTORY_ERAS.map(e => e.key) }
@@ -1026,6 +1028,41 @@ export default function TeacherDashboard() {
                         <span className="text-sm font-medium">{label}</span>
                       </label>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── 어림 만들기 출제 영역 ── */}
+              {selectedGameId === 'estimate-maker' && (
+                <div className="bg-carnival-cream rounded-2xl p-4 space-y-2">
+                  <p className="font-bold text-sm">📏 출제 영역 선택 (여러 개 가능)</p>
+                  <p className="text-xs text-carnival-navy/40">선택한 영역이 번갈아 10문제 출제돼요. 1~4번은 참고 크기를 보며, 5~8번은 참고가 3초 뒤 사라지고, 9~10번은 눈대중만으로 풀어요. 최소 1개는 선택해야 해요.</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {ESTIMATE_KINDS.map(kind => {
+                      const selected = (selectedS.estimateKinds || ESTIMATE_KINDS.map(k => k.key))
+                      const checked  = selected.includes(kind.key)
+                      return (
+                        <label key={kind.key}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer border text-sm font-medium transition-all ${
+                            checked
+                              ? 'border-orange-400 bg-orange-50 text-orange-700'
+                              : 'border-gray-100 bg-white'}`}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? selected.filter(k => k !== kind.key)
+                                : [...selected, kind.key]
+                              if (next.length === 0) return  // 최소 1개 유지
+                              updateGameSetting('estimate-maker', 'estimateKinds', next)
+                            }}
+                            className="accent-orange-500"
+                          />
+                          <span>{kind.label}</span>
+                        </label>
+                      )
+                    })}
                   </div>
                 </div>
               )}

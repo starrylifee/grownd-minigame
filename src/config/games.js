@@ -22,6 +22,7 @@ import ScienceQuizGame   from '../pages/games/ScienceQuizGame'
 import VerbFormsGame     from '../pages/games/VerbFormsGame'
 import OperatorOrderGame from '../pages/games/OperatorOrderGame'
 import CardTenGame       from '../pages/games/CardTenGame'
+import EstimateMakerGame from '../pages/games/EstimateMakerGame'
 // 레거시: 끝말잇기 (학생 난이도 문제로 비공개, 코드는 보존)
 // import WordChainGame     from '../pages/games/WordChainGame'
 // import WordChainGameEn   from '../pages/games/WordChainGameEn'
@@ -203,6 +204,17 @@ export const GAMES = [
     duration:          '약 3분',
     color:             'bg-pink-500',
     component:         CardTenGame,
+    defaultDailyLimit: 5,
+    defaultPoints:     10,
+  },
+  {
+    id:                'estimate-maker',
+    name:              '어림 만들기',
+    icon:              '📏',
+    description:       '7cm 막대, 60° 각, 24cm² 직사각형을 자 없이 눈대중으로 만들어요! 참고 크기가 점점 사라지고, 목표에 가까울수록 별을 받아요.',
+    duration:          '약 3분',
+    color:             'bg-orange-400',
+    component:         EstimateMakerGame,
     defaultDailyLimit: 5,
     defaultPoints:     10,
   },
