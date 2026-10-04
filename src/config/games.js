@@ -211,7 +211,7 @@ export const GAMES = [
     id:                'estimate-maker',
     name:              '어림 만들기',
     icon:              '📏',
-    description:       '7cm 막대, 60° 각, 24cm² 직사각형을 자 없이 눈대중으로 만들어요! 참고 크기가 점점 사라지고, 목표에 가까울수록 별을 받아요.',
+    description:       '주어진 길이·각도·넓이를 자 없이 눈대중으로 만들어요! 문제는 매번 무작위로 나오고, 목표에 가까울수록 별을 받아요.',
     duration:          '약 3분',
     color:             'bg-orange-400',
     component:         EstimateMakerGame,

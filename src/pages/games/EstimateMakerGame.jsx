@@ -28,9 +28,9 @@ const W = 700, H = 300, RH = 96   // 작업판, 참고판 크기 (둘 다 가로
 const REF_SHOW_MS = 3000
 
 export const ESTIMATE_KINDS = [
-  { key: 'length', label: '📏 길이 — 막대를 늘여 7cm 만들기',          short: '길이', unit: 'cm'  },
-  { key: 'angle',  label: '📐 각도 — 선을 돌려 60° 만들기',             short: '각도', unit: '°'   },
-  { key: 'area',   label: '⬛ 넓이 — 모서리를 끌어 24cm² 직사각형 만들기', short: '넓이', unit: 'cm²' },
+  { key: 'length', label: '📏 길이 — 막대를 늘여 목표 길이 만들기 (2~18cm 중 무작위)',        short: '길이', unit: 'cm'  },
+  { key: 'angle',  label: '📐 각도 — 선을 돌려 목표 각 만들기 (20°~160° 중 무작위)',          short: '각도', unit: '°'   },
+  { key: 'area',   label: '⬛ 넓이 — 모서리를 끌어 목표 넓이 만들기 (6~48cm² 중 무작위)', short: '넓이', unit: 'cm²' },
 ]
 const KIND = Object.fromEntries(ESTIMATE_KINDS.map(k => [k.key, k]))
 
